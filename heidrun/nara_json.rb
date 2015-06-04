@@ -1,5 +1,5 @@
 def nara_catalog_uri(id)
-  "http://catalog.archives.gov/id/#{}"
+  "http://catalog.archives.gov/id/#{id.node}"
 end
 
 Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
@@ -9,50 +9,59 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
   end
 
   dataProvider :class => DPLA::MAP::Agent do
-    # TODO: Implement a workaround to deal with the '*' faux-operator.
-    # Basically, NARA's key names at a given level vary depending on whether
-    # the record is for a file unit, item, etc. The workaround is probably
-    # something like XPath's `descendant` or `//` specifier, or JSONPath's
-    # '..' operator. 
-    providedLabel record.field('description', '*', 'physicalOccurrenceArray',
-                               '*', 'referenceUnitArray', 'referenceUnit',
+    providedLabel record.field('description', 'item | itemAv | fileUnit',
+                               'physicalOccurrenceArray',
+                               'itemPhysicalOccurrence |' \
+                                 'itemAvPhysicalOccurrence |' \
+                                 'fileUnitPhysicalOccurrence',
+                               'referenceUnitArray', 'referenceUnit',
                                'name')
   end
 
   isShownAt :class => DPLA::MAP::WebResource do
-    uri nara_catalog_uri(record.field('naId'))
+    uri record.field('naId').first_value.map { |id| nara_catalog_uri(id) }
   end
 
-  object :class => DPLA::MAP::WebResource,
-         :each => record.field('objects', 'object'),
-         :as => :obj do
-    uri obj.field('file', '@url')
-    dcformat obj.field('file', '@mime')
-  end
-
-  preview :class => DPLA::MAP::WebResource,
-         :each => record.field('objects', 'object'),
-         :as => :obj do
-    uri obj.field('thumbnail', '@url')
-    dcformat obj.field('thumbnail', '@mime')
-  end
+  # FIXME:
+  #
+  # The following `object` and `preview` mappings can result in multiple
+  # objects with NARA, and you'll get an error like this if there are more than
+  # one:
+  #     Error mapping #<Krikri::JsonParser:0x007fb8a7bbb360>, default   URI must be
+  #     set to a single value; got ["https://catalog.archives.gov/OpaAPI/media/6050582/content/rediscovery/24513-2011-001-pr.jpg",
+  #     "https://catalog.archives.gov/OpaAPI/media/6050582/content/rediscovery/24513.pdf",
+  #     "https://catalog.archives.gov/OpaAPI/media/6050582/content/rediscovery/24513-2011-002-pr.jpg"]
+  # (This error was for https://catalog.archives.gov/api/v1?naIds=6050582&pretty=false&resultTypes=item,fileUnit&objects.object.@objectSortNum=1)
+  #
+  # object :class => DPLA::MAP::WebResource,
+  #        :each => record.field('objects', 'object'),
+  #        :as => :obj do
+  #   uri obj.field('file', '@url')
+  #   dcformat obj.field('file', '@mime')
+  # end
+  #
+  # preview :class => DPLA::MAP::WebResource,
+  #        :each => record.field('objects', 'object'),
+  #        :as => :obj do
+  #   uri obj.field('thumbnail', '@url')
+  #   dcformat obj.field('thumbnail', '@mime')
+  # end
 
   originalRecord :class => DPLA::MAP::WebResource do
     uri record_uri
   end
 
   sourceResource :class => DPLA::MAP::SourceResource do
+
     # <parentRecordGroup> OR <parentCollection>
     #   <naId>[VALUE]</naId>
     #   <title>[VALUE]</title>
     #   <recordGroupNumber>[VALUE]</recordGroupNumber>
     # </parentRecordGroup> OR </parentCollection>
-    #
-    #
-    # description:
-    # <scopeAndContentNote>[VALUE]</scopeAndContentNote>
     collection :class => DPLA::MAP::Collection do
-      title ""
+      title record.field('description', 'item | itemAv | fileUnit',
+                         'parentSeries',
+                         'parentRecordGroup | parentCollection', 'title')
     end
 
     # Use <contributorType>Most Recent</contributorType> if multiple
@@ -86,7 +95,9 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
       providedLabel ""
     end
 
-    # *Check for coverage dates first and if they are missing, then check for other dates. These are ORs, not ANDs. Do not display all. **NOT <hierarchy-item-inclusive-dates>
+    # *Check for coverage dates first and if they are missing, then check for
+    # other dates. These are ORs, not ANDs. Do not display all.
+    # **NOT <hierarchy-item-inclusive-dates>
     #
     # <coverageDates>
     # <coverageEndDate>
@@ -153,17 +164,20 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
     # </generalNoteArray>
     #
     # <scopeAndContentNote>[VALUE]</scopeAndContentNote>
-    description ""
+    description record.field('description', 'item | itemAv | fileUnit',
+                             'scopeAndContentNote')
 
     # <extent>[VALUE]</extent>
-    extent ""
+    extent record.field('description', 'item | itemAv | fileUnit', 'extent')
 
     # <specificRecordsTypeArray>
     #  <specificRecordsType>
     #  <termName>[VALUE]</termName>
     # </specificRecordsType>
     # <specificRecordsTypeArray>"
-    dcformat ""
+    dcformat record.field('description', 'item | itemAv | fileUnit',
+                          'specificRecordsTypeArray', 'specificRecordsType',
+                          'termName')
 
     # <variantControlNumberArray>
     #  <variantControlNumber>
@@ -182,7 +196,10 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
     # </language>
     # </languageArray>
     language :class => DPLA::MAP::Controlled::Language do
-      prefLabel ""
+
+      # FIXME:  shouldn't this be providedLabel?
+      prefLabel record.field('description', 'item | itemAv | fileUnit',
+                             'languageArray', 'language', 'termName')
     end
 
     # <geographicReferenceArray>
@@ -191,7 +208,9 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
     #  </geographicPlaceName>
     # </geographicReferenceArray>
     spatial :class => DPLA::MAP::Place do
-      providedLabel ""
+      providedLabel record.field('description', 'item | itemAv | fileUnit',
+                                 'geographicReferenceArray',
+                                 'geographicPlaceName', 'termName')
     end
 
     # **note these are contingent on the value of contributorType/termName
@@ -258,7 +277,8 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
     # <termName xmlns=""http://description.das.nara.gov/"">VALUE3</termName>
     # </status>
     # </useRestriction> [these should be combined as VALUE2"": ""VALUE1"" ""VALUE3]"
-    rights ""
+    rights record.field('description', 'item | itemAv | fileUnit',
+                        'useRestriction', 'status', 'termName')
 
     # <topicalSubjectArray>
     # <topicalSubject>
@@ -266,11 +286,12 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
     # </topicalSubject>
     # </topicalSubjectArray>
     subject :class => DPLA::MAP::Concept do
-      providedLabel ""
+      providedLabel record.field('description', 'item | itemAv | fileUnit',
+                                 'topicalSubjectArray', 'topicalSubject',
+                                 'termName')
     end
 
-    # <title>[VALUE]</title>
-    title ""
+    title record.field('description', 'item | itemAv | fileUnit', 'title')
 
     # <generalRecordsTypeArray>
     #  <generalRecordsType>
@@ -288,6 +309,8 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
     # Sound Recordings (sound)
     # Textual Records (text)
     # Web Pages (interactive resource)
-    dctype ""
+    dctype record.field('description', 'item | itemAv | fileUnit',
+                        'generalRecordsTypeArray', 'generalRecordsType',
+                        'termName')
   end
 end
