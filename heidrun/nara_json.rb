@@ -2,6 +2,48 @@ def nara_catalog_uri(id)
   "http://catalog.archives.gov/id/#{id.node}"
 end
 
+def contributor_term_name(contributor_array)
+  node = contributor_array.node
+  contributors = node.fetch('organizationalContributor',
+                            node['personalContributor'])
+  contributors = [contributors] unless contributors.is_a? Array
+
+  # use block to act on contributors
+  yield(contributors)
+
+  return contributors.first['contributor']['termName'] \
+    unless contributors.empty?
+  nil
+end
+
+def make_contributor(contributor_array)
+    contributor_term_name(contributor_array) do |contributors|
+      # Always reject 'Publisher' and use 'Most Recent' if more than one
+      contributors.select! do |c|
+        c if c['contributorType']['termName'] != 'Publisher'
+      end
+      if contributors.count > 1
+        contributors.select! do |c|
+          c if c['contributorType']['termName'] == 'Most Recent'
+        end
+      end
+    end
+end
+
+def make_publisher(contributor_array)
+    contributor_term_name(contributor_array) do |contributors|
+      contributors.select! do |c|
+        c if c['contributorType']['termName'] == 'Publisher'
+      end
+    end
+end
+
+def make_identifier(variant_control_num)
+  node = variant_control_num.node
+  "#{node['type']['termName']}: #{node['number']}"
+end
+
+
 Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
   provider :class => DPLA::MAP::Agent do
     uri 'http://dp.la/api/contributor/nara'
@@ -79,10 +121,16 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
     #    </organizationalContributor> OR </personalContributor>
     #  </organizationalContributorArray> OR </personalContributorArray>
     contributor :class => DPLA::MAP::Agent do
-      providedLabel ""
+      providedLabel record.field('description', 'item | itemAv | fileUnit',
+                                 'organizationalContributorArray |' \
+                                   'personalContributorArray')
+                          .map { |el| make_contributor(el) }
     end
 
     # *Use <contributorType>Most Recent</contributorType> if multiple <contributor-display> values. 
+    #
+    # FIXME:  the instruction on the line above doesn't make sense with the
+    #         structure of this element in the original data. Verify?
     #
     # <creatingOrganizationArray> OR <creatingIndividualArray>
     #   <creatingOrganization> OR <creatingIndividual>
@@ -92,7 +140,12 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
     #   </creatingOrganization> OR </creatingIndividual>
     # </creatingOrganizationArray> OR </creatingIndividualArray>
     creator :class => DPLA::MAP::Agent do
-      providedLabel ""
+      providedLabel record.field('description', 'item | itemAv | fileUnit',
+                                 'parentSeries',
+                                 'creatingOrganizationArray |' \
+                                   'creatingIndividualArray',
+                                 'creatingOrganization | creatingIndividual',
+                                 'creator', 'termName')
     end
 
     # *Check for coverage dates first and if they are missing, then check for
@@ -188,7 +241,12 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
     #  </variantControlNumber>
     #  </variantControlNumberArray>
     # [combine as:  VALUE2: VALUE1
-    identifier ""
+
+    # record.field('naId').first_value.map { |id| nara_catalog_uri(id) }
+    identifier record.field('description', 'item | itemAv | fileUnit',
+                            'variantControlNumberArray',
+                            'variantControlNumber')
+                     .map { |vcn| make_identifier(vcn) }
 
     # <languageArray>
     # <language>
@@ -238,7 +296,10 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
     #  </personalContributor>
     #  </personalContributorArray>
     publisher :class => DPLA::MAP::Agent do
-      providedLabel ""
+      providedLabel record.field('description', 'item | itemAv | fileUnit',
+                                 'organizationalContributorArray |' \
+                                   'personalContributorArray')
+                          .map { |el| make_publisher(el) }
     end
 
     # <parentFileUnit>
