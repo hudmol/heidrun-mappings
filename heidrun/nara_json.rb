@@ -43,6 +43,15 @@ def make_identifier(variant_control_num)
   "#{node['type']['termName']}: #{node['number']}"
 end
 
+def make_relation(parent_file_unit)
+    node = parent_file_unit.node
+    title = node['title']
+    ps = node['parentSeries']
+    parent_srs_title = ps['title']
+    group_or_coll = ps.fetch('parentRecordGroup', ps['parentCollection'])
+    group_coll_title = group_or_coll['title']
+    "#{group_coll_title}; #{parent_srs_title}; #{title}"
+end
 
 Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
   provider :class => DPLA::MAP::Agent do
@@ -305,10 +314,10 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
     # <parentFileUnit>
     #  <title>VALUE1</title>
     #  <parentSeries>
-    #  <title>VALUE2</title>
-    #  <parentRecordGroup>
-    #  <title>VALUE3</title>
-    #  </parentRecordGroup>
+    #    <title>VALUE2</title>
+    #    <parentRecordGroup>
+    #      <title>VALUE3</title>
+    #    </parentRecordGroup>
     #  </parentSeries>
     #  </parentFileUnit>
     #  [should be combed as VALUE3""; ""VALUE2""; ""VALUE1]
@@ -318,14 +327,16 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
     #  <parentFileUnit>
     #  <title>VALUE1</title>
     #  <parentSeries>
-    #  <title>VALUE2</title>
-    #  <parentCollection>
-    #  <title>VALUE3</title>
-    #  </parentCollection>
+    #    <title>VALUE2</title>
+    #    <parentCollection>
+    #      <title>VALUE3</title>
+    #    </parentCollection>
     #  </parentSeries>
     #  </parentFileUnit>
     #  [should be combed as VALUE3""; ""VALUE2""; ""VALUE1]"
-    relation ""
+    relation record.field('description', 'item | itemAv | fileUnit',
+                          'parentFileUnit')
+                   .map { |el| make_relation(el) }
 
     # <useRestriction>
     # <note>VALUE1</note>
