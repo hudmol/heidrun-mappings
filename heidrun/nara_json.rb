@@ -62,6 +62,29 @@ def make_description(element)
   end
 end
 
+def make_rights(use_restriction)
+  node = use_restriction.node
+  note = node.fetch('note', nil)
+  sura = node.fetch('specificUseRestrictionArray', nil)
+  status = node.fetch('status', nil)
+  l_and_r_parts = \
+    [specific_rights_part(sura), genl_rights_part(note, status)].compact
+  l_and_r_parts.join ': '
+end
+
+def specific_rights_part(specific_use_restriction_array)
+  return nil if specific_use_restriction_array.nil?
+  sur = specific_use_restriction_array['specificUseRestriction']
+  sur = [sur] unless sur.is_a? Array
+  terms = sur.map { |el| el['termName'] }
+  terms.join ', '
+end
+
+def genl_rights_part(note, status)
+  [note, status['termName']].compact.join ' '
+end
+
+
 Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
   provider :class => DPLA::MAP::Agent do
     uri 'http://dp.la/api/contributor/nara'
@@ -348,18 +371,19 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
                    .map { |el| make_relation(el) }
 
     # <useRestriction>
-    # <note>VALUE1</note>
-    # <specificUseRestrictionArray>
-    # <specificUseRestriction>
-    # <termName xmlns=""http://description.das.nara.gov/"">VALUE2</termName>
-    # </specificUseRestriction>
-    # </specificUseRestrictionArray>
-    # <status>
-    # <termName xmlns=""http://description.das.nara.gov/"">VALUE3</termName>
-    # </status>
+    #   <note>VALUE1</note>
+    #   <specificUseRestrictionArray>
+    #     <specificUseRestriction>
+    #       <termName xmlns=""http://description.das.nara.gov/"">VALUE2</termName>
+    #     </specificUseRestriction>
+    #   </specificUseRestrictionArray>
+    #   <status>
+    #     <termName xmlns=""http://description.das.nara.gov/"">VALUE3</termName>
+    #   </status>
     # </useRestriction> [these should be combined as VALUE2"": ""VALUE1"" ""VALUE3]"
     rights record.field('description', 'item | itemAv | fileUnit',
-                        'useRestriction', 'status', 'termName')
+                        'useRestriction')
+                 .map { |el| make_rights(el) }
 
     # <topicalSubjectArray>
     # <topicalSubject>
