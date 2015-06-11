@@ -17,25 +17,25 @@ def contributor_term_name(contributor_array)
 end
 
 def make_contributor(contributor_array)
-    contributor_term_name(contributor_array) do |contributors|
-      # Always reject 'Publisher' and use 'Most Recent' if more than one
+  contributor_term_name(contributor_array) do |contributors|
+    # Always reject 'Publisher' and use 'Most Recent' if more than one
+    contributors.select! do |c|
+      c if c['contributorType']['termName'] != 'Publisher'
+    end
+    if contributors.count > 1
       contributors.select! do |c|
-        c if c['contributorType']['termName'] != 'Publisher'
-      end
-      if contributors.count > 1
-        contributors.select! do |c|
-          c if c['contributorType']['termName'] == 'Most Recent'
-        end
+        c if c['contributorType']['termName'] == 'Most Recent'
       end
     end
+  end
 end
 
 def make_publisher(contributor_array)
-    contributor_term_name(contributor_array) do |contributors|
-      contributors.select! do |c|
-        c if c['contributorType']['termName'] == 'Publisher'
-      end
+  contributor_term_name(contributor_array) do |contributors|
+    contributors.select! do |c|
+      c if c['contributorType']['termName'] == 'Publisher'
     end
+  end
 end
 
 def make_identifier(variant_control_num)
@@ -44,13 +44,22 @@ def make_identifier(variant_control_num)
 end
 
 def make_relation(parent_file_unit)
-    node = parent_file_unit.node
-    title = node['title']
-    ps = node['parentSeries']
-    parent_srs_title = ps['title']
-    group_or_coll = ps.fetch('parentRecordGroup', ps['parentCollection'])
-    group_coll_title = group_or_coll['title']
-    "#{group_coll_title}; #{parent_srs_title}; #{title}"
+  node = parent_file_unit.node
+  title = node['title']
+  ps = node['parentSeries']
+  parent_srs_title = ps['title']
+  group_or_coll = ps.fetch('parentRecordGroup', ps['parentCollection'])
+  group_coll_title = group_or_coll['title']
+  "#{group_coll_title}; #{parent_srs_title}; #{title}"
+end
+
+def make_description(element)
+  node = element.node
+  if node.include? 'generalNote'
+    return node['generalNote']['note']
+  else
+    return node
+  end
 end
 
 Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
@@ -227,7 +236,7 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
     #
     # <scopeAndContentNote>[VALUE]</scopeAndContentNote>
     description record.field('description', 'item | itemAv | fileUnit',
-                             'scopeAndContentNote')
+                             'scopeAndContentNote | generalNoteArray')
 
     # <extent>[VALUE]</extent>
     extent record.field('description', 'item | itemAv | fileUnit', 'extent')
