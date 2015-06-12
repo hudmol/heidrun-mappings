@@ -233,8 +233,9 @@ def date_string(node)
   qualifier_node = node.fetch('dateQualifier', false)
 
   return ymd unless qualifier_node
+
   qualifier = qualifier_node['termName']
-  qualifier == '?' ? "#{ymd}#{qualifier}" : "#{qualifier} #{ymd}"
+  (qualifier == '?') ? "#{ymd}#{qualifier}" : "#{qualifier} #{ymd}"
 end
 
 # Date and temporal fields
