@@ -13,7 +13,19 @@ def contributor_term_name(contributor_array)
 
   return contributors.first['contributor']['termName'] \
     unless contributors.empty?
-  nil
+
+  # FIXME:  It's not clear how to indicate the concept of "nothing" to
+  # `providedLabel` as a return value from this function.
+  # `RDF::Literal.new(nil)` avoids the exception
+  #    <quote>
+  #    value must be an RDF URI, Node, Literal, or a valid datatype.
+  #    See RDF::Literal.
+  #        You provided nil
+  #    </quote>
+  # ... but it results in a providedLabel of ''.  I want the same result as
+  # if record.find() did not match anything, but it's not clear how to achieve
+  # that.
+  RDF::Literal.new(nil)
 end
 
 def make_contributor(contributor_array)
