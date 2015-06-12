@@ -2,6 +2,20 @@ def nara_catalog_uri(id)
   "http://catalog.archives.gov/id/#{id.node}"
 end
 
+# See object and preview mappings
+def make_obj_uri(obj)
+  obj.node['file']['@url']
+end
+def make_obj_dcformat(obj)
+  obj.node['file']['@mime']
+end
+def make_preview_uri(obj)
+  obj.node['thumbnail']['@url']
+end
+def make_preview_dcformat(obj)
+  obj.node['thumbnail']['@mime']
+end
+
 # Return a string suitable for sourceResource.contributor or
 # sourceResource.publisher.
 #
@@ -351,30 +365,19 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
     uri record.field('naId').first_value.map { |id| nara_catalog_uri(id) }
   end
 
-  # FIXME:
-  #
-  # The following `object` and `preview` mappings can result in multiple
-  # objects with NARA, and you'll get an error like this if there are more than
-  # one:
-  #     Error mapping #<Krikri::JsonParser:0x007fb8a7bbb360>, default   URI must be
-  #     set to a single value; got ["https://catalog.archives.gov/OpaAPI/media/6050582/content/rediscovery/24513-2011-001-pr.jpg",
-  #     "https://catalog.archives.gov/OpaAPI/media/6050582/content/rediscovery/24513.pdf",
-  #     "https://catalog.archives.gov/OpaAPI/media/6050582/content/rediscovery/24513-2011-002-pr.jpg"]
-  # (This error was for https://catalog.archives.gov/api/v1?naIds=6050582&pretty=false&resultTypes=item,fileUnit&objects.object.@objectSortNum=1)
-  #
-  # object :class => DPLA::MAP::WebResource,
-  #        :each => record.field('objects', 'object'),
-  #        :as => :obj do
-  #   uri obj.field('file', '@url')
-  #   dcformat obj.field('file', '@mime')
-  # end
-  #
-  # preview :class => DPLA::MAP::WebResource,
-  #        :each => record.field('objects', 'object'),
-  #        :as => :obj do
-  #   uri obj.field('thumbnail', '@url')
-  #   dcformat obj.field('thumbnail', '@mime')
-  # end
+  object :class => DPLA::MAP::WebResource do
+    uri record.field('objects', 'object').first_value
+              .map { |o| make_obj_uri(o) }
+    dcformat record.field('objects', 'object').first_value
+                   .map { |o| make_obj_dcformat(o) }
+  end
+
+  preview :class => DPLA::MAP::WebResource do
+    uri record.field('objects', 'object').first_value
+              .map { |o| make_preview_uri(o) }
+    dcformat record.field('objects', 'object').first_value
+                   .map { |o| make_preview_dcformat(o) }
+  end
 
   originalRecord :class => DPLA::MAP::WebResource do
     uri record_uri
