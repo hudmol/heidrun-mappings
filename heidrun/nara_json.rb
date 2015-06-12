@@ -84,6 +84,28 @@ def genl_rights_part(note, status)
   [note, status['termName']].compact.join ' '
 end
 
+def make_date_provided_label(date)
+  date_string(date.node['proposableQualifiableDate'])
+end
+
+def date_string(node)
+  ymd = [
+    node.fetch('year', nil), node.fetch('month', nil), node.fetch('day', nil)
+  ].compact.join '-'
+  qualifier_node = node.fetch('dateQualifier', false)
+
+  return ymd unless qualifier_node
+  qualifier = qualifier_node['termName']
+  qualifier == '?' ? "#{ymd}#{qualifier}" : "#{qualifier} #{ymd}"
+end
+
+def make_begin_date(dates)
+  date_string(dates.node['coverageStartDate'])
+end
+
+def make_end_date(dates)
+  date_string(dates.node['coverageEndDate'])
+end
 
 Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
   provider :class => DPLA::MAP::Agent do
@@ -194,61 +216,78 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
     # **NOT <hierarchy-item-inclusive-dates>
     #
     # <coverageDates>
-    # <coverageEndDate>
-    # <dateQualifier>[VALUE]</dateQualifier>
-    # <day>[VALUE]</day>
-    # <month>[VALUE]</month>
-    # <year>[VALUE]</year>
-    # </coverageEndDate>
-    # <coverageStartDate>
-    # <dateQualifier>[VALUE]</dateQualifier>
-    # <day>[VALUE]</day>
-    # <month>[VALUE]</month>
-    # <year>[VALUE]</year>
-    # </coverageStartDate>
+    #   <coverageEndDate>
+    #     <dateQualifier>[VALUE]</dateQualifier>
+    #     <day>[VALUE]</day>
+    #     <month>[VALUE]</month>
+    #     <year>[VALUE]</year>
+    #   </coverageEndDate>
+    #   <coverageStartDate>
+    #     <dateQualifier>[VALUE]</dateQualifier>
+    #     <day>[VALUE]</day>
+    #     <month>[VALUE]</month>
+    #     <year>[VALUE]</year>
+    #   </coverageStartDate>
     # </coverageDates>
     #
     # <copyrightDateArray>
-    # <proposableQualifiableDate>
-    # <dateQualifier>[VALUE]</dateQualifier>
-    # <day>[VALUE]</day>
-    # <month>[VALUE]</month>
-    # <year>[VALUE]</year>
-    # </proposableQualifiableDate>
+    #   <proposableQualifiableDate>
+    #     <dateQualifier>[VALUE]</dateQualifier>
+    #     <day>[VALUE]</day>
+    #     <month>[VALUE]</month>
+    #     <year>[VALUE]</year>
+    #   </proposableQualifiableDate>
     # </copyrightDateArray>
     #
     # <productionDateArray>
-    # <proposableQualifiableDate>
-    # <dateQualifier>[VALUE]</dateQualifier>
-    # <day>[VALUE]</day>
-    # <month>[VALUE]</month>
-    # <year>[VALUE]</year>
-    # </proposableQualifiableDate>
+    #   <proposableQualifiableDate>
+    #     <dateQualifier>[VALUE]</dateQualifier>
+    #     <day>[VALUE]</day>
+    #     <month>[VALUE]</month>
+    #     <year>[VALUE]</year>
+    #   </proposableQualifiableDate>
     # </productionDateArray>
     #
     # <broadcastDateArray>
-    # <proposableQualifiableDate>
-    # <dateQualifier/>[VALUE]</dateQualifier>
-    # <day>[VALUE]</day>
-    # <month>[VALUE]</month>
-    # <year>[VALUE]</year>
-    # <logicalDate>[VALUE]</logicalDate>
-    # </proposableQualifiableDate>
+    #   <proposableQualifiableDate>
+    #     <dateQualifier/>[VALUE]</dateQualifier>
+    #     <day>[VALUE]</day>
+    #     <month>[VALUE]</month>
+    #     <year>[VALUE]</year>
+    #     <logicalDate>[VALUE]</logicalDate>
+    #   </proposableQualifiableDate>
     # </broadcastDateArray>
     #
     # <releaseDateArray>
-    # <proposableQualifiableDate>
-    # <dateQualifier>[VALUE]</dateQualifier>
-    # <day>[VALUE]</day>
-    # <month>[VALUE]</month>
-    # <year>[VALUE]</year>
-    # <logicalDate>[VALUE]</logicalDate>
-    # </proposableQualifiableDate>
+    #   <proposableQualifiableDate>
+    #     <dateQualifier>[VALUE]</dateQualifier>
+    #     <day>[VALUE]</day>
+    #     <month>[VALUE]</month>
+    #     <year>[VALUE]</year>
+    #     <logicalDate>[VALUE]</logicalDate>
+    #   </proposableQualifiableDate>
     # </releaseDateArray>
-    date :class => DPLA::MAP::TimeSpan do
-      providedLabel ""
-      self.begin ""
-      self.end ""
+
+    # Can have both coverageDates and another, like broadcastDateArray in
+    # http://ldp.local.dp.la/ldp/original_record/855bfa1df8fbd4817d493b38b451766f.json
+    date :class => DPLA::MAP::TimeSpan,
+         :each => record.field('description', 'item | itemAv | fileUnit',
+                               'copyrightDateArray |' \
+                                 'productionDateArray | broadcastDateArray |' \
+                                 'releaseDateArray'),
+         :as => :dc_date do
+      providedLabel dc_date.map { |d| make_date_provided_label(d) }
+      # self.begin dc_date.map { |d| make_begin_date(d) }
+      # self.end { |d| make_end_date(d) }
+    end
+
+    temporal :class => DPLA::MAP::TimeSpan,
+             :each => record.field('description', 'item | itemAv | fileUnit',
+                                   'coverageDates'),
+             :as => :dates do
+      # providedLabel dates.map { |d| make_date_provided_label(d) }
+      self.begin dates.map { |d| make_begin_date(d) }
+      self.end dates.map { |d| make_end_date(d) }
     end
 
     # <generalNoteArray>
