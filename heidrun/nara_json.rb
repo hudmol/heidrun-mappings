@@ -229,7 +229,7 @@ end
 def date_string(node)
   ymd = [
     node.fetch('year', nil), node.fetch('month', nil), node.fetch('day', nil)
-  ].compact.join '-'
+  ].compact.map { |e| "%02d" % e }.join '-'
   qualifier_node = node.fetch('dateQualifier', false)
 
   return ymd unless qualifier_node
