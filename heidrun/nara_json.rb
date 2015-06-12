@@ -4,16 +4,16 @@ end
 
 # See object and preview mappings
 def make_obj_uri(obj)
-  obj.node['file']['@url']
+  obj.node['@url']
 end
 def make_obj_dcformat(obj)
-  obj.node['file']['@mime']
+  obj.node['@mime']
 end
 def make_preview_uri(obj)
-  obj.node['thumbnail']['@url']
+  obj.node['@url']
 end
 def make_preview_dcformat(obj)
-  obj.node['thumbnail']['@mime']
+  obj.node['@mime']
 end
 
 # Return a string suitable for sourceResource.contributor or
@@ -241,6 +241,7 @@ end
 # @param node [Hash]
 # @return [String]
 def date_string(node)
+  return "" if node.nil?
   ymd = [
     node.fetch('year', nil), node.fetch('month', nil), node.fetch('day', nil)
   ].compact.map { |e| "%02d" % e }.join '-'
@@ -366,16 +367,16 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
   end
 
   object :class => DPLA::MAP::WebResource do
-    uri record.field('objects', 'object').first_value
+    uri record.field('objects', 'object', 'file').first_value
               .map { |o| make_obj_uri(o) }
-    dcformat record.field('objects', 'object').first_value
+    dcformat record.field('objects', 'object', 'file').first_value
                    .map { |o| make_obj_dcformat(o) }
   end
 
   preview :class => DPLA::MAP::WebResource do
-    uri record.field('objects', 'object').first_value
+    uri record.field('objects', 'object', 'thumbnail').first_value
               .map { |o| make_preview_uri(o) }
-    dcformat record.field('objects', 'object').first_value
+    dcformat record.field('objects', 'object', 'thumbnail').first_value
                    .map { |o| make_preview_dcformat(o) }
   end
 
