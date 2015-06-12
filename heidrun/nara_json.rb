@@ -2,13 +2,20 @@ def nara_catalog_uri(id)
   "http://catalog.archives.gov/id/#{id.node}"
 end
 
+# Return a string suitable for sourceResource.contributor or
+# sourceResource.publisher.
+#
+# @see #make_contributor
+# @see #make_publisher
+# @param contributor_array [Krikri::JsonParser::Value]
+# @return [String, RDF::Literal]
 def contributor_term_name(contributor_array)
+  binding.pry
   node = contributor_array.node
   contributors = node.fetch('organizationalContributor',
                             node['personalContributor'])
   contributors = [contributors] unless contributors.is_a? Array
 
-  # use block to act on contributors
   yield(contributors)
 
   return contributors.first['contributor']['termName'] \
@@ -28,6 +35,25 @@ def contributor_term_name(contributor_array)
   RDF::Literal.new(nil)
 end
 
+# Return a string for sourceResource.contributor
+#
+# Use <contributorType>Most Recent</contributorType> if multiple
+# <contributor-display> values.
+# Reject <contributorType>Publisher</contributorType>.
+#
+#  <organizationalContributorArray> OR <personalContributorArray>
+#    <organizationalContributor> OR <personalContributor>
+#      <contributor>
+#        <termName>[VALUE]</termName>
+#      </contributor>
+#      <contributorType>
+#        <termName>[VALUE]</termName>
+#      </contributorType>
+#    </organizationalContributor> OR </personalContributor>
+#  </organizationalContributorArray> OR </personalContributorArray>
+#
+# @see #contributor_term_name
+# @return [String, RDF::Literal]
 def make_contributor(contributor_array)
   contributor_term_name(contributor_array) do |contributors|
     # Always reject 'Publisher' and use 'Most Recent' if more than one
@@ -42,6 +68,35 @@ def make_contributor(contributor_array)
   end
 end
 
+# Return a string for sourceResource.publisher
+#
+# **note these are contingent on the value of contributorType/termName
+# being ""Publisher""
+#
+# <organizationalContributorArray>
+#  <organizationalContributor>
+#  <contributor>
+#  <termName>[VALUE]</termName>
+#  </contributor>
+#  <contributorType>
+#  <termName>Publisher</termName>
+#  </contributorType>
+#  </organizationalContributor>
+#  </organizationalContributorArray>
+#
+#  <personalContributorArray>
+#  <personalContributor>
+#  <contributor>
+#  <termName>[VALUE]</termName>
+#  </contributor>
+#  <contributorType>
+#  <termName>Publisher</termName>
+#  </contributorType>
+#  </personalContributor>
+#  </personalContributorArray>
+#
+# @see #contributor_term_name
+# @return [String, RDF::Literal]
 def make_publisher(contributor_array)
   contributor_term_name(contributor_array) do |contributors|
     contributors.select! do |c|
@@ -50,11 +105,53 @@ def make_publisher(contributor_array)
   end
 end
 
+# Return string for sourceResource.identifier
+#
+# <variantControlNumberArray>
+#  <variantControlNumber>
+#  <number>[VALUE1]</number>
+#  <type>
+#  <termName>[VALUE2]</termName>
+#  </type>
+#  </variantControlNumber>
+#  </variantControlNumberArray>
+# [combine as:  VALUE2: VALUE1
+#
+# @param variant_control_num [Krikri::JsonParser::Value]
+# @return [String]
 def make_identifier(variant_control_num)
   node = variant_control_num.node
   "#{node['type']['termName']}: #{node['number']}"
 end
 
+# Return a string for sourceResource.relation
+#
+# <parentFileUnit>
+#  <title>VALUE1</title>
+#  <parentSeries>
+#    <title>VALUE2</title>
+#    <parentRecordGroup>
+#      <title>VALUE3</title>
+#    </parentRecordGroup>
+#  </parentSeries>
+#  </parentFileUnit>
+#  [should be combed as VALUE3""; ""VALUE2""; ""VALUE1]
+#
+#  OR
+#
+#  <parentFileUnit>
+#  <title>VALUE1</title>
+#  <parentSeries>
+#    <title>VALUE2</title>
+#    <parentCollection>
+#      <title>VALUE3</title>
+#    </parentCollection>
+#  </parentSeries>
+#  </parentFileUnit>
+#  [should be combed as VALUE3""; ""VALUE2""; ""VALUE1]"
+#
+# @param parent_file_unit [Krikri::JsonParser::Value]
+# @return [String]
 def make_relation(parent_file_unit)
   node = parent_file_unit.node
   title = node['title']
@@ -65,15 +162,39 @@ def make_relation(parent_file_unit)
   "#{group_coll_title}; #{parent_srs_title}; #{title}"
 end
 
+# Return a string for sourceResource.description
+#
+# <generalNoteArray>
+# <generalNote>
+# <note>[VALUE]</note>
+# </generalNote>
+# </generalNoteArray>
+#
+# <scopeAndContentNote>[VALUE]</scopeAndContentNote>
+#
+# @param element [Krikri::JsonParser::Value]
+# @return [String]
 def make_description(element)
   node = element.node
-  if node.include? 'generalNote'
-    return node['generalNote']['note']
-  else
-    return node
-  end
+  (node.is_a? String) ? node : node['generalNote']['note']
 end
 
+# <useRestriction>
+#   <note>VALUE1</note>
+#   <specificUseRestrictionArray>
+#     <specificUseRestriction>
+#       <termName xmlns=""http://description.das.nara.gov/"">VALUE2</termName>
+#     </specificUseRestriction>
+#   </specificUseRestrictionArray>
+#   <status>
+#     <termName xmlns=""http://description.das.nara.gov/"">VALUE3</termName>
+#   </status>
+# </useRestriction>
+#
+# These should be combined as "VALUE2: VALUE1 VALUE3"
+#
+# @param element [Krikri::JsonParser::Value]
+# @return [String]
 def make_rights(use_restriction)
   node = use_restriction.node
   note = node.fetch('note', nil)
@@ -84,6 +205,7 @@ def make_rights(use_restriction)
   l_and_r_parts.join ': '
 end
 
+# @see #make_rights
 def specific_rights_part(specific_use_restriction_array)
   return nil if specific_use_restriction_array.nil?
   sur = specific_use_restriction_array['specificUseRestriction']
@@ -92,14 +214,18 @@ def specific_rights_part(specific_use_restriction_array)
   terms.join ', '
 end
 
+# @see #make_rights
 def genl_rights_part(note, status)
   [note, status['termName']].compact.join ' '
 end
 
-def make_date_provided_label(date)
-  date_string(date.node['proposableQualifiableDate'])
-end
 
+# @see #make_date_provided_label
+# @see #make_begin_date
+# @see #make_end_date
+#
+# @param node [Hash]
+# @return [String]
 def date_string(node)
   ymd = [
     node.fetch('year', nil), node.fetch('month', nil), node.fetch('day', nil)
@@ -111,10 +237,95 @@ def date_string(node)
   qualifier == '?' ? "#{ymd}#{qualifier}" : "#{qualifier} #{ymd}"
 end
 
+# Date and temporal fields
+#
+# FIXME:
+#
+# This may be wrong.  The original comment in this file was:
+#
+# <quote>
+#   *Check for coverage dates first and if they are missing, then check for
+#   other dates. These are ORs, not ANDs. Do not display all.
+#   **NOT <hierarchy-item-inclusive-dates>
+# </quote>
+#
+# ... But it looks to me like coverageDates is supposed to represent
+# "aboutness" as dcterms:temporal, and the other ones are supposed to represent
+# a publication, production, or copyright date as dc:date.
+#
+# This needs verification.
+#
+# <coverageDates>
+#   <coverageEndDate>
+#     <dateQualifier>[VALUE]</dateQualifier>
+#     <day>[VALUE]</day>
+#     <month>[VALUE]</month>
+#     <year>[VALUE]</year>
+#   </coverageEndDate>
+#   <coverageStartDate>
+#     <dateQualifier>[VALUE]</dateQualifier>
+#     <day>[VALUE]</day>
+#     <month>[VALUE]</month>
+#     <year>[VALUE]</year>
+#   </coverageStartDate>
+# </coverageDates>
+#
+# <copyrightDateArray>
+#   <proposableQualifiableDate>
+#     <dateQualifier>[VALUE]</dateQualifier>
+#     <day>[VALUE]</day>
+#     <month>[VALUE]</month>
+#     <year>[VALUE]</year>
+#   </proposableQualifiableDate>
+# </copyrightDateArray>
+#
+# <productionDateArray>
+#   <proposableQualifiableDate>
+#     <dateQualifier>[VALUE]</dateQualifier>
+#     <day>[VALUE]</day>
+#     <month>[VALUE]</month>
+#     <year>[VALUE]</year>
+#   </proposableQualifiableDate>
+# </productionDateArray>
+#
+# <broadcastDateArray>
+#   <proposableQualifiableDate>
+#     <dateQualifier/>[VALUE]</dateQualifier>
+#     <day>[VALUE]</day>
+#     <month>[VALUE]</month>
+#     <year>[VALUE]</year>
+#     <logicalDate>[VALUE]</logicalDate>
+#   </proposableQualifiableDate>
+# </broadcastDateArray>
+#
+# <releaseDateArray>
+#   <proposableQualifiableDate>
+#     <dateQualifier>[VALUE]</dateQualifier>
+#     <day>[VALUE]</day>
+#     <month>[VALUE]</month>
+#     <year>[VALUE]</year>
+#     <logicalDate>[VALUE]</logicalDate>
+#   </proposableQualifiableDate>
+# </releaseDateArray>
+#
+# A record can have both dc:date and dcterms:temporal values, like
+# coverageDates and broadcastDateArray in
+# https://catalog.archives.gov/api/v1?pretty=true&resultTypes=item%2CfileUnit&objects.object.@objectSortNum=1&naIds=5860128
+
+# Return a string suitable for sourceResource.date.providedLabel
+#
+def make_date_provided_label(date)
+  date_string(date.node['proposableQualifiableDate'])
+end
+
+# Return a string for sourceResource.temporal.begin
+#
 def make_begin_date(dates)
   date_string(dates.node['coverageStartDate'])
 end
 
+# Return a string for sourceResource.temporal.end
+#
 def make_end_date(dates)
   date_string(dates.node['coverageEndDate'])
 end
@@ -181,20 +392,6 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
                          'parentRecordGroup | parentCollection', 'title')
     end
 
-    # Use <contributorType>Most Recent</contributorType> if multiple
-    # <contributor-display> values. 
-    # Reject <contributorType>Publisher</contributorType>.
-    #
-    #  <organizationalContributorArray> OR <personalContributorArray>
-    #    <organizationalContributor> OR <personalContributor>
-    #      <contributor>
-    #        <termName>[VALUE]</termName>
-    #      </contributor>
-    #      <contributorType>
-    #        <termName>[VALUE]</termName>
-    #      </contributorType>
-    #    </organizationalContributor> OR </personalContributor>
-    #  </organizationalContributorArray> OR </personalContributorArray>
     contributor :class => DPLA::MAP::Agent do
       providedLabel record.field('description', 'item | itemAv | fileUnit',
                                  'organizationalContributorArray |' \
@@ -202,7 +399,7 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
                           .map { |el| make_contributor(el) }
     end
 
-    # *Use <contributorType>Most Recent</contributorType> if multiple <contributor-display> values. 
+    # *Use <contributorType>Most Recent</contributorType> if multiple <contributor-display> values.
     #
     # FIXME:  the instruction on the line above doesn't make sense with the
     #         structure of this element in the original data. Verify?
@@ -223,65 +420,6 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
                                  'creator', 'termName')
     end
 
-    # *Check for coverage dates first and if they are missing, then check for
-    # other dates. These are ORs, not ANDs. Do not display all.
-    # **NOT <hierarchy-item-inclusive-dates>
-    #
-    # <coverageDates>
-    #   <coverageEndDate>
-    #     <dateQualifier>[VALUE]</dateQualifier>
-    #     <day>[VALUE]</day>
-    #     <month>[VALUE]</month>
-    #     <year>[VALUE]</year>
-    #   </coverageEndDate>
-    #   <coverageStartDate>
-    #     <dateQualifier>[VALUE]</dateQualifier>
-    #     <day>[VALUE]</day>
-    #     <month>[VALUE]</month>
-    #     <year>[VALUE]</year>
-    #   </coverageStartDate>
-    # </coverageDates>
-    #
-    # <copyrightDateArray>
-    #   <proposableQualifiableDate>
-    #     <dateQualifier>[VALUE]</dateQualifier>
-    #     <day>[VALUE]</day>
-    #     <month>[VALUE]</month>
-    #     <year>[VALUE]</year>
-    #   </proposableQualifiableDate>
-    # </copyrightDateArray>
-    #
-    # <productionDateArray>
-    #   <proposableQualifiableDate>
-    #     <dateQualifier>[VALUE]</dateQualifier>
-    #     <day>[VALUE]</day>
-    #     <month>[VALUE]</month>
-    #     <year>[VALUE]</year>
-    #   </proposableQualifiableDate>
-    # </productionDateArray>
-    #
-    # <broadcastDateArray>
-    #   <proposableQualifiableDate>
-    #     <dateQualifier/>[VALUE]</dateQualifier>
-    #     <day>[VALUE]</day>
-    #     <month>[VALUE]</month>
-    #     <year>[VALUE]</year>
-    #     <logicalDate>[VALUE]</logicalDate>
-    #   </proposableQualifiableDate>
-    # </broadcastDateArray>
-    #
-    # <releaseDateArray>
-    #   <proposableQualifiableDate>
-    #     <dateQualifier>[VALUE]</dateQualifier>
-    #     <day>[VALUE]</day>
-    #     <month>[VALUE]</month>
-    #     <year>[VALUE]</year>
-    #     <logicalDate>[VALUE]</logicalDate>
-    #   </proposableQualifiableDate>
-    # </releaseDateArray>
-
-    # Can have both coverageDates and another, like broadcastDateArray in
-    # http://ldp.local.dp.la/ldp/original_record/855bfa1df8fbd4817d493b38b451766f.json
     date :class => DPLA::MAP::TimeSpan,
          :each => record.field('description', 'item | itemAv | fileUnit',
                                'copyrightDateArray |' \
@@ -302,15 +440,9 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
       self.end dates.map { |d| make_end_date(d) }
     end
 
-    # <generalNoteArray>
-    # <generalNote>
-    # <note>[VALUE]</note>
-    # </generalNote>
-    # </generalNoteArray>
-    #
-    # <scopeAndContentNote>[VALUE]</scopeAndContentNote>
     description record.field('description', 'item | itemAv | fileUnit',
                              'scopeAndContentNote | generalNoteArray')
+                      .map { |d| make_description(d) }
 
     # <extent>[VALUE]</extent>
     extent record.field('description', 'item | itemAv | fileUnit', 'extent')
@@ -324,17 +456,6 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
                           'specificRecordsTypeArray', 'specificRecordsType',
                           'termName')
 
-    # <variantControlNumberArray>
-    #  <variantControlNumber>
-    #  <number>[VALUE1]</number>
-    #  <type>
-    #  <termName>[VALUE2]</termName>
-    #  </type>
-    #  </variantControlNumber>
-    #  </variantControlNumberArray>
-    # [combine as:  VALUE2: VALUE1
-
-    # record.field('naId').first_value.map { |id| nara_catalog_uri(id) }
     identifier record.field('description', 'item | itemAv | fileUnit',
                             'variantControlNumberArray',
                             'variantControlNumber')
@@ -363,30 +484,6 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
                                  'geographicPlaceName', 'termName')
     end
 
-    # **note these are contingent on the value of contributorType/termName
-    # being ""Publisher""
-    #
-    # <organizationalContributorArray>
-    #  <organizationalContributor>
-    #  <contributor>
-    #  <termName>[VALUE]</termName>
-    #  </contributor>
-    #  <contributorType>
-    #  <termName>Publisher</termName>
-    #  </contributorType>
-    #  </organizationalContributor>
-    #  </organizationalContributorArray>
-    # 
-    #  <personalContributorArray>
-    #  <personalContributor>
-    #  <contributor>
-    #  <termName>[VALUE]</termName>
-    #  </contributor>
-    #  <contributorType>
-    #  <termName>Publisher</termName>
-    #  </contributorType>
-    #  </personalContributor>
-    #  </personalContributorArray>
     publisher :class => DPLA::MAP::Agent do
       providedLabel record.field('description', 'item | itemAv | fileUnit',
                                  'organizationalContributorArray |' \
@@ -394,44 +491,10 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
                           .map { |el| make_publisher(el) }
     end
 
-    # <parentFileUnit>
-    #  <title>VALUE1</title>
-    #  <parentSeries>
-    #    <title>VALUE2</title>
-    #    <parentRecordGroup>
-    #      <title>VALUE3</title>
-    #    </parentRecordGroup>
-    #  </parentSeries>
-    #  </parentFileUnit>
-    #  [should be combed as VALUE3""; ""VALUE2""; ""VALUE1]
-    #
-    #  OR
-    #
-    #  <parentFileUnit>
-    #  <title>VALUE1</title>
-    #  <parentSeries>
-    #    <title>VALUE2</title>
-    #    <parentCollection>
-    #      <title>VALUE3</title>
-    #    </parentCollection>
-    #  </parentSeries>
-    #  </parentFileUnit>
-    #  [should be combed as VALUE3""; ""VALUE2""; ""VALUE1]"
     relation record.field('description', 'item | itemAv | fileUnit',
                           'parentFileUnit')
                    .map { |el| make_relation(el) }
 
-    # <useRestriction>
-    #   <note>VALUE1</note>
-    #   <specificUseRestrictionArray>
-    #     <specificUseRestriction>
-    #       <termName xmlns=""http://description.das.nara.gov/"">VALUE2</termName>
-    #     </specificUseRestriction>
-    #   </specificUseRestrictionArray>
-    #   <status>
-    #     <termName xmlns=""http://description.das.nara.gov/"">VALUE3</termName>
-    #   </status>
-    # </useRestriction> [these should be combined as VALUE2"": ""VALUE1"" ""VALUE3]"
     rights record.field('description', 'item | itemAv | fileUnit',
                         'useRestriction')
                  .map { |el| make_rights(el) }
