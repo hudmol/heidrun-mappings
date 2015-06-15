@@ -330,9 +330,6 @@ end
 # Return a string suitable for sourceResource.date.providedLabel
 #
 def make_date_provided_label(date)
-
-  binding.pry
-
   date_string(date.node)
   # node = date.node['proposableQualifiableDate']
   # node = [node] unless node.is_a? Array
