@@ -10,7 +10,7 @@ def make_obj_dcformat(obj)
   obj.node['@mime']
 end
 def make_preview_uri(obj)
-  obj.node['@url']
+  URI::escape(obj.node['@url'])  # Can also have space characters
 end
 def make_preview_dcformat(obj)
   obj.node['@mime']
