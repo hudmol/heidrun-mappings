@@ -4,7 +4,7 @@ end
 
 # See object and preview mappings
 def make_obj_uri(obj)
-  obj.node['@url']
+  URI::escape(obj.node['@url'])  # Can have space characters
 end
 def make_obj_dcformat(obj)
   obj.node['@mime']
@@ -24,7 +24,6 @@ end
 # @param contributor_array [Krikri::JsonParser::Value]
 # @return [String, RDF::Literal]
 def contributor_term_name(contributor_array)
-  binding.pry
   node = contributor_array.node
   contributors = node.fetch('organizationalContributor',
                             node['personalContributor'])
@@ -331,7 +330,13 @@ end
 # Return a string suitable for sourceResource.date.providedLabel
 #
 def make_date_provided_label(date)
-  date_string(date.node['proposableQualifiableDate'])
+
+  binding.pry
+
+  date_string(date.node)
+  # node = date.node['proposableQualifiableDate']
+  # node = [node] unless node.is_a? Array
+  # node.map { |n| date_string(n) }
 end
 
 # Return a string for sourceResource.temporal.begin
@@ -425,15 +430,44 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
                                  'creator', 'termName')
     end
 
+
+    # FIXME:
+    #
+    # When proposableQualifiableDate is an array, you get a `date` that looks
+    # like this:
+    #
+    #     <http://purl.org/dc/elements/1.1/date> [
+    #   a <http://www.europeana.eu/schemas/edm/TimeSpan>;
+    #   <http://dp.la/about/map/providedLabel> "1948-03-03",
+    #     "1948-02-11"
+    # ],  [
+    #   a <http://www.europeana.eu/schemas/edm/TimeSpan>;
+    #   <http://dp.la/about/map/providedLabel> "1948-03-03",
+    #     "1948-02-11"
+    # ],  [
+    #   a <http://www.europeana.eu/schemas/edm/TimeSpan>;
+    #   <http://dp.la/about/map/providedLabel> "1948-03-03",
+    #     "1948-02-11"
+    # ];
+    #
+    # See https://catalog.archives.gov/api/v1?naIds=20765&pretty=true&resultTypes=item,fileUnit&objects.object.@objectSortNum=1
+    #
+    # I expect `each`, below, to give me each of the proposableQualifiableDate
+    # objects one time only, but when when I examine the execution in `pry` it
+    # enters #make_data_provided_label nine times.  I expect it to enter that
+    # method only three times.  It goes through the three elements of
+    # proposedQualifiableDate in the correct order, three times.
+    #
     date :class => DPLA::MAP::TimeSpan,
          :each => record.field('description', 'item | itemAv | fileUnit',
                                'copyrightDateArray |' \
                                  'productionDateArray | broadcastDateArray |' \
-                                 'releaseDateArray'),
+                                 'releaseDateArray',
+                                 'proposableQualifiableDate'),
          :as => :dc_date do
       providedLabel dc_date.map { |d| make_date_provided_label(d) }
-      # self.begin dc_date.map { |d| make_begin_date(d) }
-      # self.end { |d| make_end_date(d) }
+      # self.begin dc_date.map { |d| make_date_provided_label(d) }
+      # self.end { |d| make_date_provided_label(d) }
     end
 
     temporal :class => DPLA::MAP::TimeSpan,
