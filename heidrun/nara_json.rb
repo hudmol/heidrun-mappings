@@ -189,7 +189,7 @@ end
 # @return [String]
 def make_description(element)
   node = element.node
-  (node.is_a? String) ? node : node['generalNote']['note']
+  (node.is_a? String) ? node : node['note']
 end
 
 # <useRestriction>
@@ -477,7 +477,8 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
     end
 
     description record.field('description', 'item | itemAv | fileUnit',
-                             'scopeAndContentNote | generalNoteArray')
+                             'scopeAndContentNote | generalNoteArray',
+                             'generalNote')
                       .map { |d| make_description(d) }
 
     # <extent>[VALUE]</extent>
