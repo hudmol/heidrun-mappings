@@ -134,7 +134,10 @@ end
 # @return [String]
 def make_identifier(variant_control_num)
   node = variant_control_num.node
-  "#{node['type']['termName']}: #{node['number']}"
+  # The 'type' property can be missing.
+  # See https://catalog.archives.gov/api/v1?naIds=65523&pretty=true&resultTypes=item,fileUnit&objects.object.@objectSortNum=1
+  type = (node.include? 'type') ? node['type']['termName'] : nil
+  [type, node['number']].compact.join ': '
 end
 
 # Return a string for sourceResource.relation
