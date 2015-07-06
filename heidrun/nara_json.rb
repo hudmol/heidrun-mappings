@@ -507,10 +507,8 @@ Krikri::Mapper.define(:nara_json, :parser => Krikri::JsonParser) do
     # </language>
     # </languageArray>
     language :class => DPLA::MAP::Controlled::Language do
-
-      # FIXME:  shouldn't this be providedLabel?
-      prefLabel record.field('description', 'item | itemAv | fileUnit',
-                             'languageArray', 'language', 'termName')
+      providedLabel record.field('description', 'item | itemAv | fileUnit',
+                                 'languageArray', 'language', 'termName')
     end
 
     # <geographicReferenceArray>
