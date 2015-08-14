@@ -8,6 +8,23 @@ module MappingTools
   # mappings of MARC providers.
   #
   module MARC
+
+    # Lambdas for `.select` calls performed on record nodes (which are
+    # Krikri::XmlParser::Value objects)
+    #
+    # @example:
+    #   cf_007 = r.node.children
+    #             .select(&MappingTools::MARC::IS_CF7_NODE)
+    #             .first.children.to_s
+    #
+    IS_LEADER_NODE = lambda { |node| node.name == 'leader' }
+    IS_CF7_NODE = lambda { |node|
+      node.name == 'controlfield' && node[:tag] == '007'
+    }
+    IS_CF8_NODE = lambda { |node|
+      node.name == 'controlfield' && node[:tag] == '008'
+    }
+
     module_function
 
     ##

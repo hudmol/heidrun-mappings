@@ -19,16 +19,6 @@ creator_select = lambda { |df|
     ['joint author.', 'jt author'].include?(subfield_e(df))
 }
 
-# See genre below.  Lambdas for `.select`s that determine the nature of a node
-# in `record`.
-is_leader_node = lambda { |node| node.name == 'leader' }
-is_cf7_node = lambda { |node|
-  node.name == 'controlfield' && node[:tag] == '007'
-}
-is_cf8_node = lambda { |node|
-  node.name == 'controlfield' && node[:tag] == '008'
-}
-
 
 Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
   provider :class => DPLA::MAP::Agent do
@@ -131,11 +121,14 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
            :each => record.map { |r|
                       # The disparity between ".children.first" and
                       # ".first.children" is not accidental:
-                      leader = r.node.children.select(&is_leader_node)[0]
+                      leader = r.node.children
+                                .select(&MappingTools::MARC::IS_LEADER_NODE)[0]
                                 .children.first.to_s
-                      cf_007 = r.node.children.select(&is_cf7_node)
+                      cf_007 = r.node.children
+                                .select(&MappingTools::MARC::IS_CF7_NODE)
                                 .first.children.to_s
-                      cf_008 = r.node.children.select(&is_cf8_node)
+                      cf_008 = r.node.children
+                                .select(&MappingTools::MARC::IS_CF8_NODE)
                                 .first.children.to_s
                      MappingTools::MARC.genre leader: leader,
                                               cf_007: cf_007,
