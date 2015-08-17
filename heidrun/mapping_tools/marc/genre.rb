@@ -157,10 +157,6 @@ module MappingTools
         s[1] == 't'
       end
 
-      def film_video?(s)
-        %w(c d f o).include?(s[1])
-      end
-
       # two-dimensional non-projectable graphic
       def two_d_nonproj_graphic?(s)
         s[6] == 'k'

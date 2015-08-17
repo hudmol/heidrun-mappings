@@ -5,6 +5,7 @@ module MappingTools
   #
   module MARC
     require_relative 'marc/genre'
+    require_relative 'marc/dctype'
 
     # Lambdas for `.select` calls performed on record nodes (which are
     # Krikri::XmlParser::Value objects)
@@ -20,6 +21,12 @@ module MappingTools
     }
     IS_CF8_NODE = lambda { |node|
       node.name == 'controlfield' && node[:tag] == '008'
+    }
+    IS_DF337_NODE = lambda { |node|
+      node.name == 'datafield' && node[:tag] == '337'
+    }
+    IS_SF_A = lambda { |element|
+      element.name == 'subfield' && element[:code] == 'a'
     }
 
     module_function
@@ -48,6 +55,22 @@ module MappingTools
         || Genre.assign_musical_sound(*args)
       genres << 'Government Document' if Genre.government_document?(opts[:cf_008])
       genres
+    end
+
+    def dctype(opts)
+      types = []
+      args = [types, opts]
+      DCType.assign_337a(*args)
+      DCType.assign_text(*args) \
+        || DCType.assign_still_and_moving_image(*args) \
+        || DCType.assign_sound(*args) || DCType.assign_physical_object(*args) \
+        || DCType.assign_collection(*args) \
+        || DCType.assign_interactive_rsrc(*args)
+      types
+    end
+
+    def film_video?(s)
+      %w(c d f o).include?(s[1])
     end
   end
 end

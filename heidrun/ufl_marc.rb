@@ -19,7 +19,6 @@ creator_select = lambda { |df|
     ['joint author.', 'jt author'].include?(subfield_e(df))
 }
 
-
 Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
   provider :class => DPLA::MAP::Agent do
     uri 'http://dp.la/api/contributor/ufl'
@@ -138,6 +137,37 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
       prefLabel g
     end
 
+    # dctype
+    #   337$a
+    #   See spreadsheet referenced above for genre.
+    dctype :class => DPLA::MAP::Concept,
+           :each => record.map { |r|
+                      leader = r.node.children
+                                .select(&MappingTools::MARC::IS_LEADER_NODE)[0]
+                                .children.first.to_s
+                      cf_007 = r.node.children
+                                .select(&MappingTools::MARC::IS_CF7_NODE)
+                                .first.children.to_s
+                      df_337 = r.node.children
+                                .select(&MappingTools::MARC::IS_DF337_NODE)
+                                .first
+                      if !df_337.nil?
+                        node = df_337.children.to_a
+                                     .select(&MappingTools::MARC::IS_SF_A)
+                        df_337a = !node.empty? ? node.first.children.to_s \
+                                               : ''
+                      else
+                        df_337a = ''
+                      end
+
+                      MappingTools::MARC.dctype leader: leader,
+                                                cf_007: cf_007,
+                                                df_337a: df_337a
+                    }.flatten,
+           :as => :dct do
+      prefLabel dct
+    end
+
     #identifier 
 
     #language 
@@ -163,6 +193,5 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
 
     #title 
 
-    #dctype
   end
 end
