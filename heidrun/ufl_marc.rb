@@ -120,15 +120,9 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
            :each => record.map { |r|
                       # The disparity between ".children.first" and
                       # ".first.children" is not accidental:
-                      leader = r.node.children
-                                .select(&MappingTools::MARC::IS_LEADER_NODE)[0]
-                                .children.first.to_s
-                      cf_007 = r.node.children
-                                .select(&MappingTools::MARC::IS_CF7_NODE)
-                                .first.children.to_s
-                      cf_008 = r.node.children
-                                .select(&MappingTools::MARC::IS_CF8_NODE)
-                                .first.children.to_s
+                      leader = MappingTools::MARC.leader_value(r)
+                      cf_007 = MappingTools::MARC.controlfield_value(r, '007')
+                      cf_008 = MappingTools::MARC.controlfield_value(r, '008')
                      MappingTools::MARC.genre leader: leader,
                                               cf_007: cf_007,
                                               cf_008: cf_008
@@ -142,23 +136,11 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
     #   See spreadsheet referenced above for genre.
     dctype :class => DPLA::MAP::Concept,
            :each => record.map { |r|
-                      leader = r.node.children
-                                .select(&MappingTools::MARC::IS_LEADER_NODE)[0]
-                                .children.first.to_s
-                      cf_007 = r.node.children
-                                .select(&MappingTools::MARC::IS_CF7_NODE)
-                                .first.children.to_s
-                      df_337 = r.node.children
-                                .select(&MappingTools::MARC::IS_DF337_NODE)
-                                .first
-                      if !df_337.nil?
-                        node = df_337.children.to_a
-                                     .select(&MappingTools::MARC::IS_SF_A)
-                        df_337a = !node.empty? ? node.first.children.to_s \
-                                               : ''
-                      else
-                        df_337a = ''
-                      end
+
+                      leader = MappingTools::MARC.leader_value(r)
+                      cf_007 = MappingTools::MARC.controlfield_value(r, '007')
+                      df_337 = MappingTools::MARC.datafield_el(r, '337')
+                      df_337a = MappingTools::MARC.subfield_value(df_337, 'a')
 
                       MappingTools::MARC.dctype leader: leader,
                                                 cf_007: cf_007,
@@ -191,7 +173,29 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
 
     #subject 
 
-    #title 
+    # title
+    #   245 (all subfields except $c); 242; 240
+    title :class => DPLA::MAP::Concept,
+          :each => record.map { |r|
+                     nodes = []  # Elements
+                     # These appended elements will be nil if the datafields
+                     # do not exist.  The array will be compacted below.
+                     nodes << MappingTools::MARC.datafield_el(r, '240')
+                     nodes << MappingTools::MARC.datafield_el(r, '242')
+                     nodes_245 = MappingTools::MARC.datafield_el(r, '245')
+                     if !nodes_245.nil? && !nodes_245.children.empty?
+                       nodes += nodes_245.children
+                                         .select { |c| c.name == 'subfield' \
+                                                       && c[:code] != 'c' }
+                     end
+                     # Inside of a subfield element, you still have a
+                     # `children` property with a single XML text node, so
+                     # these have to be mapped to an array of strings:
+                     nodes.compact.map { |n| n.children.first.to_s }
+                   }.flatten,
+          :as => :t do
+      providedLabel t
+    end
 
   end
 end

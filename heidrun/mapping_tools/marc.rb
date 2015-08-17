@@ -7,28 +7,6 @@ module MappingTools
     require_relative 'marc/genre'
     require_relative 'marc/dctype'
 
-    # Lambdas for `.select` calls performed on record nodes (which are
-    # Krikri::XmlParser::Value objects)
-    #
-    # @example:
-    #   cf_007 = r.node.children
-    #             .select(&MappingTools::MARC::IS_CF7_NODE)
-    #             .first.children.to_s
-    #
-    IS_LEADER_NODE = lambda { |node| node.name == 'leader' }
-    IS_CF7_NODE = lambda { |node|
-      node.name == 'controlfield' && node[:tag] == '007'
-    }
-    IS_CF8_NODE = lambda { |node|
-      node.name == 'controlfield' && node[:tag] == '008'
-    }
-    IS_DF337_NODE = lambda { |node|
-      node.name == 'datafield' && node[:tag] == '337'
-    }
-    IS_SF_A = lambda { |element|
-      element.name == 'subfield' && element[:code] == 'a'
-    }
-
     module_function
 
     ##
@@ -70,10 +48,106 @@ module MappingTools
     end
 
     ##
+    # Return a lambda suitable for Array#select, that gives the XML element
+    # with a particular name and 'tag' attribute.
+    #
+    # @example
+    #   The XML element for control field 007 has a 'name' of 'controlfield'
+    #   and a 'tag' of '007', so:
+    #     r.node.children
+    #      .select(&name_tag_condition('controlfield', '007')).first
+    #   gives you the matching element.
+    #
+    # @param name [String] The element name, without the namespace
+    # @param tag  [String] The value of the element's 'tag' attribute
+    def name_tag_condition(name, tag)
+      lambda { |node| node.name == name && node[:tag] == tag }
+    end
+
+    ##
+    # Return a lambda suitable for Array#select, that gives the XML element
+    # for a datafield's subfield that has a particular code
+    #
+    # @param name [String] The element name, without the namespace
+    # @param code  [String] The value of the element's 'code' attribute
+    def subfield_code_condition(code)
+      lambda { |node| node.name == 'subfield' && node[:code] == code }
+    end
+
+    ##
+    # Return an Element for the datafield with the given number (tag), or nil
+    #
+    # @param r    [Krikri::XmlParser::Value] The record root element
+    # @param name [String] The XML element name, without the namespace
+    # @param tag  [String] The value of the element's 'tag' attribute
+    # @return     [Element] or [nil]
+    def select_field(r, name, tag)
+      r.node.children
+       .select(&name_tag_condition(name, tag)).first
+    end
+
+    ##
+    # Return an Element for the datafield with the given number (tag)
+    #
+    # @param r   [Krikri::XmlParser::Value] The record root element
+    # @param tag [String] The tag, e.g. '240'
+    # @return    [Element] or [nil], per #select_field
+    def datafield_el(r, tag)
+      select_field(r, 'datafield', tag)
+    end
+
+    ##
+    # Return the String value of the controlfield with the given number (tag)
+    #
+    # @param  r   [Krikri::XmlParser::Value] The record root element
+    # @param  tag [String]  The tag, e.g. '007'
+    # @return     [String]
+    # @raise      [NoElementError]  If the controlfield doesn't exist
+    def controlfield_value(r, tag)
+      select_field(r, 'controlfield', tag).children.first.to_s
+    rescue NoMethodError
+      raise NoElementError.new "No control field #{tag}"
+    end
+
+    ##
+    # Return an Element for the MARC leader
+    #
+    # @param   r [Krikri::XmlParser::Value] The record root element
+    # @return    [String]
+    # @raise     [NoElementError]  If there is no leader
+    def leader_value(r)
+      r.node.children.select { |n| n.name == 'leader' }
+                     .first.children.first.to_s
+    rescue NoMethodError
+      raise NoElementError.new "No MARC leader element"
+    end
+
+    ##
+    # Return the String value of the subfield element with the given code
+    #
+    # An empty string is returned if the subfield can not be found, so that
+    # an empty subfield or a missing subfield can both be detedted with
+    # `String#empty?`
+    #
+    # @param  element [Element] The elemenet, e.g. datafield
+    # @param  code    [String]  Code, i.e. its 'tag' attribute
+    # @return         [String]  ('' if the subfield can not be found)
+    def subfield_value(element, code)
+      if !element.nil?
+        node = element.children.to_a.select(&subfield_code_condition(code))
+        !node.empty? ? node.first.children.to_s : ''
+      else
+        ''
+      end
+    end
+
+    ##
     # Whether Control Field 007 indicates Film / Video
     # @param s [String] Control Field 007
     def film_video?(s)
       %w(c d f o).include?(s[1])
     end
+
+    class NoElementError < StandardError; end
   end
 end
