@@ -100,78 +100,122 @@ module MappingTools
         end
       end
 
+      ##
+      # Whether the MARC leader indicates Language Material
+      # @param s [String]  MARC leader
       def language_material?(s)
         s[6] == 'a'
       end
 
+      ##
+      # Whether the MARC leader indicates Monograph
+      # @param s [String] MARC leader
       def monograph?(s)
         s[7] == 'm'
       end
 
+      ##
+      # Whether control field 008 indicates Newspapers
+      # @param s [String] Control field 008
       def newspapers?(s)
         s[21] == 'n'
       end
 
+      ##
+      # Whether the MARC leader indicates Serial
+      # @param s [String] MARC leader
       def serial?(s)
         s[7] == 's'
       end
 
-      # monographic component part
+      ##
+      # Whether the MARC leader indicates a Monographic Component Part
+      # @param s [String] MARC leader
       def mono_component_part?(s)
         s[7] == 'a'
       end
 
+      ##
+      # Whether the MARC leader indicates Notated Music
+      # @param s [String] MARC leader
       def notated_music?(s)
         s[6] == 'c'
       end
 
-      # manuscript notated music
+      ##
+      # Whether the MARC leader indicates Manuscript Notated Music
+      # @param s [String] MARC leader
       def manu_notated_music?(s)
         s[6] == 'd'
       end
 
-      # manuscript language material
+      ##
+      # Whether the MARC leader indicates Manuscript Language Material
+      # @param s [String] MARC leader
       def manu_lang_material?(s)
         s[6] == 't'
       end
 
-      # cartographic material
+      ##
+      # Whether the MARC leader indicates Cartographic Material
+      # @param s [String] MARC leader
       def cart_material?(s)
         s[6] == 'e'
       end
 
-      # manuscript cartographic material
+      ##
+      # Whether the MARC leader indicates Manuscript Cartographic Material
+      # @param s [String] MARC leader
       def manu_cart_material?(s)
         s[6] == 'f'
       end
 
+      ##
+      # Whether the MARC leader indicates Projected Medium
+      # @param s [String] MARC leader
       def projected_medium?(s)
         s[6] == 'g'
       end
 
+      ##
+      # Whether Control Field 007 indicates Slide
+      # @param s [String] Control Field 007
       def slide?(s)
         s[1] == 's'
       end
 
+      ##
+      # Whether Control Field 007 indicates Transparency
+      # @param s [String] Control Field 007
       def transparency?(s)
         s[1] == 't'
       end
 
-      # two-dimensional non-projectable graphic
+      ##
+      # Whether the MARC leader indicates Two-Dimensional Non-Projectable
+      # Graphic
+      # @param s [String] MARC leader
       def two_d_nonproj_graphic?(s)
         s[6] == 'k'
       end
 
-      # nonmusical sound recording
+      ##
+      # Whether the MARC leader indicates Nonmusical Sound Recording
+      # @param s [String] MARC leader
       def nonmusical_sound?(s)
         s[6] == 'i'
       end
 
-      # musical sound recording
+      ##
+      # Whether the MARC leader indicates Musical Sound Recording
+      # @param s [String] MARC leader
       def musical_sound?(s)
         s[6] == 'j'
       end
 
+      ##
+      # Whether Control Field 008 indicates Government Document
+      # @param s [String] Control Field 008
       def government_document?(s)
         %w(a c f i l m o s).include?(s[28])
       end

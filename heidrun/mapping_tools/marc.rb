@@ -69,6 +69,9 @@ module MappingTools
       types
     end
 
+    ##
+    # Whether Control Field 007 indicates Film / Video
+    # @param s [String] Control Field 007
     def film_video?(s)
       %w(c d f o).include?(s[1])
     end

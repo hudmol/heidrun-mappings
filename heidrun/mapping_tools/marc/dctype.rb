@@ -73,26 +73,44 @@ module MappingTools
         end
       end
 
+      ##
+      # Whether the MARC leader indicates Image or Moving Image
+      # @param s [String] MARC leader
       def still_or_moving_image?(s)
         %w(e f g k).include?(s[6])
       end
 
+      ##
+      # Whether the MARC leader indicates Text
+      # @param s [String] MARC leader
       def text?(s)
         %w(a c d t).include?(s[6])
       end
 
+      ##
+      # Whether the MARC leader indicates Sound
+      # @param s [String] MARC leader
       def sound?(s)
         %w(i j).include?(s[6])
       end
 
+      ##
+      # Whether the MARC leader indicates Physical Object
+      # @param s [String] MARC leader
       def physical_object?(s)
         s[6] == 'r'
       end
 
+      ##
+      # Whether the MARC leader indicates Collection
+      # @param s [String] MARC leader
       def collection?(s)
         ['p', 'o'].include?(s[6])
       end
 
+      ##
+      # Whether the MARC leader indicates Interactive Resource
+      # @param s [String] MARC leader
       def interactive_rsrc?(s)
         s[6] == 'm'
       end
