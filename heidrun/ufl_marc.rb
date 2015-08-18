@@ -50,15 +50,6 @@ identifier_map = lambda { |r|
       .map { |sf| sf.children.first.to_s }
   end
 
-  # if !df_50.nil? && !df_50.children.empty?
-  #   df_50ab =  df_50.children
-  #                   .select { |c| c.name == 'subfield' \
-  #                                 && %w(a b).include?(c[:code]) }
-  #                   .map { |el| el.children.first.to_s }
-  # else
-  #   df_50ab = []
-  # end
-
   [cf_001, df_35a, df_50ab.join(' ')].reject { |e| e.empty? }
 }
 
