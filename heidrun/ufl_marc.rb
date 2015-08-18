@@ -71,6 +71,10 @@ title_map = lambda { |r|
   nodes.compact.map { |n| n.children.first.to_s }
 }
 
+language_map = lambda { |parser_value|
+  parser_value.node.children.first.to_s[35,3]
+}
+
 
 Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
   provider :class => DPLA::MAP::Agent do
@@ -193,7 +197,15 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
       providedLabel id
     end
 
-    #language 
+    # language
+    #   008 (positions 35-37)
+    language :class => DPLA::MAP::Controlled::Language,
+             :each => record.field('marc:controlfield')
+                            .match_attribute(:tag, '008')
+                            .map(&language_map),
+             :as => :lang do
+      prefLabel lang
+    end
 
     #spatial 
 
