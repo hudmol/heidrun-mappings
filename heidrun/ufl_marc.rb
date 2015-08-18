@@ -19,19 +19,56 @@ creator_select = lambda { |df|
     ['joint author.', 'jt author'].include?(subfield_e(df))
 }
 
+genre_map = lambda { |r|
+  leader = MappingTools::MARC.leader_value(r)
+  cf_007 = MappingTools::MARC.controlfield_value(r, '007')
+  cf_008 = MappingTools::MARC.controlfield_value(r, '008')
+  MappingTools::MARC.genre leader: leader,
+                           cf_007: cf_007,
+                           cf_008: cf_008
+}
+
+dctype_map = lambda { |r|
+  leader = MappingTools::MARC.leader_value(r)
+  cf_007 = MappingTools::MARC.controlfield_value(r, '007')
+  df_337 = MappingTools::MARC.datafield_el(r, '337')
+  df_337a = MappingTools::MARC.subfield_value(df_337, 'a')
+  MappingTools::MARC.dctype leader: leader,
+                            cf_007: cf_007,
+                            df_337a: df_337a
+}
+
 identifier_map = lambda { |r|
   cf_001 = MappingTools::MARC.controlfield_value(r, '001')
   df_35 = MappingTools::MARC.datafield_el(r, '035')
   df_35a = MappingTools::MARC.subfield_value(df_35, 'a')
   df_50 = MappingTools::MARC.datafield_el(r, '050')
   if !df_50.nil? && !df_50.children.empty?
-    df_50ab =  df_50.children.select { |c| c.name == 'subfield' \
-                                           && %w(a b).include?(c[:code]) }
-                              .map { |el| el.children.first.to_s }
+    df_50ab =  df_50.children
+                    .select { |c| c.name == 'subfield' \
+                                  && %w(a b).include?(c[:code]) }
+                    .map { |el| el.children.first.to_s }
   else
     df_50ab = []
   end
   [cf_001, df_35a, df_50ab.join(' ')].reject { |e| e.empty? }
+}
+
+title_map = lambda { |r|
+  nodes = []  # Elements
+  # These appended elements will be nil if the datafields
+  # do not exist.  The array will be compacted below.
+  nodes << MappingTools::MARC.datafield_el(r, '240')
+  nodes << MappingTools::MARC.datafield_el(r, '242')
+  nodes_245 = MappingTools::MARC.datafield_el(r, '245')
+  if !nodes_245.nil? && !nodes_245.children.empty?
+    nodes += nodes_245.children
+                      .select { |c| c.name == 'subfield' && c[:code] != 'c' }
+  end
+  # Inside of a subfield element, you still have a
+  # `children` property with a single XML text node, so
+  # these have to be mapped to an array of strings:
+  nodes.compact.map { |n| n.children.first.to_s }
 }
 
 
@@ -133,14 +170,7 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
     #   See chart here [minus step two]:
     #   https://docs.google.com/spreadsheet/ccc?key=0ApDps8nOS9g5dHBOS0ZLRVJyZ1ZsR3RNZDhXTGV4SVE#gid=0
     genre  :class => DPLA::MAP::Concept,
-           :each => record.map { |r|
-                      leader = MappingTools::MARC.leader_value(r)
-                      cf_007 = MappingTools::MARC.controlfield_value(r, '007')
-                      cf_008 = MappingTools::MARC.controlfield_value(r, '008')
-                     MappingTools::MARC.genre leader: leader,
-                                              cf_007: cf_007,
-                                              cf_008: cf_008
-                   }.flatten,
+           :each => record.map(&genre_map).flatten,
           :as => :g do
       prefLabel g
     end
@@ -149,17 +179,7 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
     #   337$a
     #   See spreadsheet referenced above for genre.
     dctype :class => DPLA::MAP::Concept,
-           :each => record.map { |r|
-
-                      leader = MappingTools::MARC.leader_value(r)
-                      cf_007 = MappingTools::MARC.controlfield_value(r, '007')
-                      df_337 = MappingTools::MARC.datafield_el(r, '337')
-                      df_337a = MappingTools::MARC.subfield_value(df_337, 'a')
-
-                      MappingTools::MARC.dctype leader: leader,
-                                                cf_007: cf_007,
-                                                df_337a: df_337a
-                    }.flatten,
+           :each => record.map(&dctype_map).flatten,
            :as => :dct do
       prefLabel dct
     end
@@ -197,23 +217,7 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
     # title
     #   245 (all subfields except $c); 242; 240
     title :class => DPLA::MAP::Concept,
-          :each => record.map { |r|
-                     nodes = []  # Elements
-                     # These appended elements will be nil if the datafields
-                     # do not exist.  The array will be compacted below.
-                     nodes << MappingTools::MARC.datafield_el(r, '240')
-                     nodes << MappingTools::MARC.datafield_el(r, '242')
-                     nodes_245 = MappingTools::MARC.datafield_el(r, '245')
-                     if !nodes_245.nil? && !nodes_245.children.empty?
-                       nodes += nodes_245.children
-                                         .select { |c| c.name == 'subfield' \
-                                                       && c[:code] != 'c' }
-                     end
-                     # Inside of a subfield element, you still have a
-                     # `children` property with a single XML text node, so
-                     # these have to be mapped to an array of strings:
-                     nodes.compact.map { |n| n.children.first.to_s }
-                   }.flatten,
+          :each => record.map(&title_map).flatten,
           :as => :t do
       providedLabel t
     end
