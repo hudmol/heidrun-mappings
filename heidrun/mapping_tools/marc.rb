@@ -65,6 +65,16 @@ module MappingTools
     end
 
     ##
+    # Return a lambda suitable for Array#select that gives the XML element
+    # with a particular name, with a 'tag' attribute matching the given regex
+    #
+    # @param name [String] The element name, without the namespace
+    # @param tag  [Regexp] The pattern for matching the tag
+    def name_tag_match_condition(name, pattern)
+      lambda { |node| node.name == name && node[:tag] =~ pattern }
+    end
+
+    ##
     # Return a lambda suitable for Array#select, that gives the XML element
     # for a datafield's subfield that has a particular code
     #
@@ -79,11 +89,16 @@ module MappingTools
     #
     # @param r    [Krikri::XmlParser::Value] The record root element
     # @param name [String] The XML element name, without the namespace
-    # @param tag  [String] The value of the element's 'tag' attribute
+    # @param tag  [String|Regexp] The value of the element's 'tag' attribute,
+    #                             or a Regexp to match it
     # @return     [Element] or [nil]
     def select_field(r, name, tag)
-      r.node.children
-       .select(&name_tag_condition(name, tag))
+      if tag.class == Regexp
+        select_cond = name_tag_match_condition(name, tag)
+      else
+        select_cond = name_tag_condition(name, tag)
+      end
+      r.node.children.select(&select_cond)
     end
 
     ##
@@ -153,14 +168,15 @@ module MappingTools
 
     ##
     # Return an array of Strings for the values of all of the subfields in the
-    # given element
+    # given element that have a-z codes
     #
     # @param element [Element] The element, which is probably a datafield
     # @return        [Array]   An array of String.  Empty if no subfields.
     def all_subfield_values(elements)
       elements.map do |el|
         el.children.to_a
-          .select { |child| child.name == 'subfield' }
+          .select { |child| child.name == 'subfield' \
+                            && child[:code] =~ /^[a-z]$/ }
           .map { |child| child.children.first.to_s }
       end.flatten
     end

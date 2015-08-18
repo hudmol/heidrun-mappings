@@ -97,6 +97,12 @@ spatial_map = lambda { |r|
   [df_650z, df_651a, df_662].flatten.reject { |e| e.empty? }
 }
 
+subject_tag_pat = /^6(?:00|1\d|5(?:[01]|[3-8])|9\d)$/
+subject_map = lambda { |r|
+  all_els = MappingTools::MARC.datafield_els(r, subject_tag_pat)
+  sfs = MappingTools::MARC.all_subfield_values(all_els)
+  sfs.reject { |e| e.empty? }
+}
 
 Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
   provider :class => DPLA::MAP::Agent do
@@ -246,7 +252,7 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
               :as => :pub do
       providedLabel pub.field('marc:subfield').match_attribute(:code, 'b')
     end
-    
+
     # for relation below the mapping is to both 780$t and 787$t, not sure how
     # to combine attribute mappings in an OR relationship
     relation record.field('marc:datafield').match_attribute(:tag, '780')
@@ -255,7 +261,14 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
     rights record.field('marc:datafield').match_attribute(:tag, '506')
                    .field('marc:subfield').match_attribute(:code, 'a')
 
-    #subject 
+    # subject
+    #   600; 61X; 650; 651; 653; 654; 655; 656; 657; 658; 69X
+    #   "all subfields"
+    subject :class => DPLA::MAP::Concept,
+            :each => record.map(&subject_map).flatten,
+            :as => :s do
+      providedLabel s
+    end
 
     # title
     #   245 (all subfields except $c); 242; 240
