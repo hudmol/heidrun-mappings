@@ -83,7 +83,7 @@ module MappingTools
     # @return     [Element] or [nil]
     def select_field(r, name, tag)
       r.node.children
-       .select(&name_tag_condition(name, tag)).first
+       .select(&name_tag_condition(name, tag))
     end
 
     ##
@@ -92,23 +92,22 @@ module MappingTools
     # @param r   [Krikri::XmlParser::Value] The record root element
     # @param tag [String] The tag, e.g. '240'
     # @return    [Element] or [nil], per #select_field
-    def datafield_el(r, tag)
+    def datafield_els(r, tag)
       select_field(r, 'datafield', tag)
     end
 
     ##
     # Return the String value of the datafield with the given number (tag)
     #
-    # An empty string is returned if the datafield does not exist, so that
-    # empty and missing elements can both be detected with `String#empty?`
+    # An empty array is returned if the datafield does not exist.
     #
     # @param  r   [Krikri::XmlParser::Value] The record root element
     # @param  tag [String] The tag, e.g. '001'
-    # @return     [String] ('' if element does not exist)
-    def datafield_value(r, tag)
-      select_field(r, 'datafield', tag).children.first.to_s
+    # @return     [Array] of String ([] if element does not exist)
+    def datafield_values(r, tag)
+      select_field(r, 'datafield', tag).map { |f| f.children.first.to_s }
     rescue NoMethodError
-      ''
+      []
     end
 
     ##
@@ -119,7 +118,7 @@ module MappingTools
     # @return     [String]
     # @raise      [NoElementError]  If the controlfield doesn't exist
     def controlfield_value(r, tag)
-      select_field(r, 'controlfield', tag).children.first.to_s
+      select_field(r, 'controlfield', tag).first.children.first.to_s
     rescue NoMethodError
       raise NoElementError.new "No control field #{tag}"
     end
@@ -140,20 +139,30 @@ module MappingTools
     ##
     # Return the String value of the subfield element with the given code
     #
-    # An empty string is returned if the subfield can not be found, so that
-    # an empty subfield or a missing subfield can both be detedted with
-    # `String#empty?`
+    # An empty array is returned if the subfield can not be found.
     #
-    # @param  element [Element] The elemenet, e.g. datafield
-    # @param  code    [String]  Code, i.e. its 'tag' attribute
-    # @return         [String]  ('' if the subfield can not be found)
-    def subfield_value(element, code)
-      if !element.nil?
-        node = element.children.to_a.select(&subfield_code_condition(code))
-        !node.empty? ? node.first.children.to_s : ''
-      else
-        ''
-      end
+    # @param  elements [Element] The elemenets, e.g. datafield
+    # @param  code     [String]  Code, i.e. its 'tag' attribute
+    # @return          [Array]  ([] if the subfield can not be found)
+    def subfield_values(elements, code)
+      elements.map do |e|
+        nodes = e.children.to_a.select(&subfield_code_condition(code))
+        !nodes.empty? ? nodes.first.children.to_s : nil
+      end.compact
+    end
+
+    ##
+    # Return an array of Strings for the values of all of the subfields in the
+    # given element
+    #
+    # @param element [Element] The element, which is probably a datafield
+    # @return        [Array]   An array of String.  Empty if no subfields.
+    def all_subfield_values(elements)
+      elements.map do |el|
+        el.children.to_a
+          .select { |child| child.name == 'subfield' }
+          .map { |child| child.children.first.to_s }
+      end.flatten
     end
 
     ##

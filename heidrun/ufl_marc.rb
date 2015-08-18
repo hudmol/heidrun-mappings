@@ -31,8 +31,8 @@ genre_map = lambda { |r|
 dctype_map = lambda { |r|
   leader = MappingTools::MARC.leader_value(r)
   cf_007 = MappingTools::MARC.controlfield_value(r, '007')
-  df_337 = MappingTools::MARC.datafield_el(r, '337')
-  df_337a = MappingTools::MARC.subfield_value(df_337, 'a')
+  df_337 = MappingTools::MARC.datafield_els(r, '337')
+  df_337a = MappingTools::MARC.subfield_values(df_337, 'a')
   MappingTools::MARC.dctype leader: leader,
                             cf_007: cf_007,
                             df_337a: df_337a
@@ -40,17 +40,25 @@ dctype_map = lambda { |r|
 
 identifier_map = lambda { |r|
   cf_001 = MappingTools::MARC.controlfield_value(r, '001')
-  df_35 = MappingTools::MARC.datafield_el(r, '035')
-  df_35a = MappingTools::MARC.subfield_value(df_35, 'a')
-  df_50 = MappingTools::MARC.datafield_el(r, '050')
-  if !df_50.nil? && !df_50.children.empty?
-    df_50ab =  df_50.children
-                    .select { |c| c.name == 'subfield' \
-                                  && %w(a b).include?(c[:code]) }
-                    .map { |el| el.children.first.to_s }
-  else
-    df_50ab = []
+  df_35 = MappingTools::MARC.datafield_els(r, '035')
+  df_35a = MappingTools::MARC.subfield_values(df_35, 'a')
+  df_50 = MappingTools::MARC.datafield_els(r, '050')
+
+  df_50ab = df_50.map do |el|
+    el.children
+      .select { |c| c.name == 'subfield' && %w(a b).include?(c[:code]) }
+      .map { |sf| sf.children.first.to_s }
   end
+
+  # if !df_50.nil? && !df_50.children.empty?
+  #   df_50ab =  df_50.children
+  #                   .select { |c| c.name == 'subfield' \
+  #                                 && %w(a b).include?(c[:code]) }
+  #                   .map { |el| el.children.first.to_s }
+  # else
+  #   df_50ab = []
+  # end
+
   [cf_001, df_35a, df_50ab.join(' ')].reject { |e| e.empty? }
 }
 
@@ -58,13 +66,23 @@ title_map = lambda { |r|
   nodes = []  # Elements
   # These appended elements will be nil if the datafields
   # do not exist.  The array will be compacted below.
-  nodes << MappingTools::MARC.datafield_el(r, '240')
-  nodes << MappingTools::MARC.datafield_el(r, '242')
-  nodes_245 = MappingTools::MARC.datafield_el(r, '245')
-  if !nodes_245.nil? && !nodes_245.children.empty?
-    nodes += nodes_245.children
-                      .select { |c| c.name == 'subfield' && c[:code] != 'c' }
+  nodes += MappingTools::MARC.datafield_els(r, '240')
+  nodes += MappingTools::MARC.datafield_els(r, '242')
+
+  df_245 = MappingTools::MARC.datafield_els(r, '245')
+
+  # if !nodes_245.nil? && !nodes_245.children.empty?
+  #   nodes += nodes_245.children
+  #                     .select { |c| c.name == 'subfield' && c[:code] != 'c' }
+  # end
+
+  df_245.each do |el|
+    if !el.children.empty?
+      nodes += el.children
+                 .select { |c| c.name == 'subfield' && c[:code] != 'c' }
+    end
   end
+
   # Inside of a subfield element, you still have a
   # `children` property with a single XML text node, so
   # these have to be mapped to an array of strings:
@@ -73,6 +91,19 @@ title_map = lambda { |r|
 
 language_map = lambda { |parser_value|
   parser_value.node.children.first.to_s[35,3]
+}
+
+spatial_map = lambda { |r|
+  df_752 = MappingTools::MARC.datafield_els(r, '752')
+  df_752_val = MappingTools::MARC.all_subfield_values(df_752).join('--')
+  return df_752_val if !df_752_val.empty?
+
+  df_650 = MappingTools::MARC.datafield_els(r, '650')
+  df_650z = MappingTools::MARC.subfield_values(df_650, 'z')
+  df_651 = MappingTools::MARC.datafield_els(r, '651')
+  df_651a = MappingTools::MARC.subfield_values(df_651, 'a')
+  df_662 = MappingTools::MARC.datafield_values(r, '662')
+  [df_650z, df_651a, df_662].flatten.reject { |e| e.empty? }
 }
 
 
@@ -207,7 +238,16 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
       prefLabel lang
     end
 
-    #spatial 
+    # spatial
+    #   752 (separate subfields with double hyphen);
+    #   else any of these: (650$z; 651$a; 662)
+    #   [see defs of subfield codes at http://www.loc.gov/marc/bibliographic/bd662.html]
+    spatial :class => DPLA::MAP::Place,
+            :each => record.map(&spatial_map).flatten,
+            :as => :place do
+      providedLabel place
+    end
+
 
     publisher :class => DPLA::MAP::Agent, 
               :each => record.field('marc:datafield')

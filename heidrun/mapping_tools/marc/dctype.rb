@@ -11,7 +11,7 @@ module MappingTools
       # Assign the value of datafield 337$a, if it exists.
       def assign_337a(types, opts)
         if opts.include?(:df_337a) && !opts[:df_337a].empty?
-          types << opts[:df_337a]
+          types += opts[:df_337a]
         end
       end
 
