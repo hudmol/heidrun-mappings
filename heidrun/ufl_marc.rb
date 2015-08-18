@@ -118,8 +118,6 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
     #   https://docs.google.com/spreadsheet/ccc?key=0ApDps8nOS9g5dHBOS0ZLRVJyZ1ZsR3RNZDhXTGV4SVE#gid=0
     genre  :class => DPLA::MAP::Concept,
            :each => record.map { |r|
-                      # The disparity between ".children.first" and
-                      # ".first.children" is not accidental:
                       leader = MappingTools::MARC.leader_value(r)
                       cf_007 = MappingTools::MARC.controlfield_value(r, '007')
                       cf_008 = MappingTools::MARC.controlfield_value(r, '008')
