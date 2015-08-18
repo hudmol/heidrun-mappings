@@ -19,6 +19,22 @@ creator_select = lambda { |df|
     ['joint author.', 'jt author'].include?(subfield_e(df))
 }
 
+identifier_map = lambda { |r|
+  cf_001 = MappingTools::MARC.controlfield_value(r, '001')
+  df_35 = MappingTools::MARC.datafield_el(r, '035')
+  df_35a = MappingTools::MARC.subfield_value(df_35, 'a')
+  df_50 = MappingTools::MARC.datafield_el(r, '050')
+  if !df_50.nil? && !df_50.children.empty?
+    df_50ab =  df_50.children.select { |c| c.name == 'subfield' \
+                                           && %w(a b).include?(c[:code]) }
+                              .map { |el| el.children.first.to_s }
+  else
+    df_50ab = []
+  end
+  [cf_001, df_35a, df_50ab.join(' ')].reject { |e| e.empty? }
+}
+
+
 Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
   provider :class => DPLA::MAP::Agent do
     uri 'http://dp.la/api/contributor/ufl'
@@ -148,7 +164,14 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
       prefLabel dct
     end
 
-    #identifier 
+    # identifier
+    #   001; 035$a;
+    #   050$a$b (join strings with a space character)
+    identifier :class => DPLA::MAP::Concept,
+               :each => record.map(&identifier_map).flatten,
+               :as => :id do
+      providedLabel id
+    end
 
     #language 
 

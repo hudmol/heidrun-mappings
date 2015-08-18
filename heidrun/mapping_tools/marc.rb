@@ -97,6 +97,21 @@ module MappingTools
     end
 
     ##
+    # Return the String value of the datafield with the given number (tag)
+    #
+    # An empty string is returned if the datafield does not exist, so that
+    # empty and missing elements can both be detected with `String#empty?`
+    #
+    # @param  r   [Krikri::XmlParser::Value] The record root element
+    # @param  tag [String] The tag, e.g. '001'
+    # @return     [String] ('' if element does not exist)
+    def datafield_value(r, tag)
+      select_field(r, 'datafield', tag).children.first.to_s
+    rescue NoMethodError
+      ''
+    end
+
+    ##
     # Return the String value of the controlfield with the given number (tag)
     #
     # @param  r   [Krikri::XmlParser::Value] The record root element
