@@ -47,6 +47,13 @@ module MappingTools
       types
     end
 
+    def dcformat(opts)
+      formats = []
+      DCFormat.assign_from_leader(formats, opts)
+      DCFormat.assign_from_cf007(formats, opts)
+      formats.compact
+    end
+
     ##
     # Return a lambda suitable for Array#select, that gives the XML element
     # with a particular name and 'tag' attribute.

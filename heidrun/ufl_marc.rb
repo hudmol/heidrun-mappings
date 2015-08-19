@@ -109,6 +109,17 @@ relation_map = lambda { |r|
   MappingTools::MARC.subfield_values(dfs, 't')
 }
 
+dcformat_map = lambda { |r|
+  cf_007 = MappingTools::MARC.controlfield_value(r, '007')
+  leader = MappingTools::MARC.leader_value(r)
+  dfs = MappingTools::MARC.datafield_els(r, /^3(?:3[78]|40)$/)
+  a_vals = MappingTools::MARC.subfield_values(dfs, 'a')
+  formats = MappingTools::MARC.dcformat leader: leader,
+                                        cf_007: cf_007
+  (formats + a_vals).uniq
+}
+
+
 Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
   provider :class => DPLA::MAP::Agent do
     uri 'http://dp.la/api/contributor/ufl'
@@ -219,6 +230,16 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
            :each => record.map(&dctype_map).flatten,
            :as => :dct do
       prefLabel dct
+    end
+
+    # dcformat
+    #   007 position 00 [see http://www.loc.gov/marc/bibliographic/bd007.html];
+    #   position 06 in Leader [see “06 - Type of record“ here: http://www.loc.gov/marc/bibliographic/bdleader.html];
+    #   337$a; 338$a; 340$a
+    dcformat :class => DPLA::MAP::Concept,
+             :each => record.map(&dcformat_map).flatten,
+             :as => :dcf do
+      prefLabel dcf
     end
 
     # identifier
