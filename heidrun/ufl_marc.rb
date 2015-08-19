@@ -104,6 +104,11 @@ subject_map = lambda { |r|
   sfs.reject { |e| e.empty? }
 }
 
+relation_map = lambda { |r|
+  dfs = MappingTools::MARC.datafield_els(r, /^78[07]$/)
+  MappingTools::MARC.subfield_values(dfs, 't')
+}
+
 Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
   provider :class => DPLA::MAP::Agent do
     uri 'http://dp.la/api/contributor/ufl'
@@ -253,11 +258,14 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
       providedLabel pub.field('marc:subfield').match_attribute(:code, 'b')
     end
 
-    # for relation below the mapping is to both 780$t and 787$t, not sure how
-    # to combine attribute mappings in an OR relationship
-    relation record.field('marc:datafield').match_attribute(:tag, '780')
-                   .field('marc:subfield').match_attribute(:code, 't')            
-                 
+    # relation
+    #   both 780$t and 787$t
+    relation :class => DPLA::MAP::Concept,
+             :each => record.map(&relation_map).flatten,
+             :as => :r do
+      providedLabel r
+    end
+
     rights record.field('marc:datafield').match_attribute(:tag, '506')
                    .field('marc:subfield').match_attribute(:code, 'a')
 
