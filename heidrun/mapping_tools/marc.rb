@@ -105,7 +105,7 @@ module MappingTools
     # Return an Element for the datafield with the given number (tag)
     #
     # @param r   [Krikri::XmlParser::Value] The record root element
-    # @param tag [String] The tag, e.g. '240'
+    # @param tag [String|Regexp] The tag, e.g. '240' or /^78[07]$/
     # @return    [Element] or [nil], per #select_field
     def datafield_els(r, tag)
       select_field(r, 'datafield', tag)
