@@ -62,11 +62,6 @@ title_map = lambda { |r|
 
   df_245 = MappingTools::MARC.datafield_els(r, '245')
 
-  # if !nodes_245.nil? && !nodes_245.children.empty?
-  #   nodes += nodes_245.children
-  #                     .select { |c| c.name == 'subfield' && c[:code] != 'c' }
-  # end
-
   df_245.each do |el|
     if !el.children.empty?
       nodes += el.children
