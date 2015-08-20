@@ -92,13 +92,13 @@ module MappingTools
     end
 
     ##
-    # Return an Element for the datafield with the given number (tag), or nil
+    # Return an Array of Element for the datafield with the given number (tag)
     #
     # @param r    [Krikri::XmlParser::Value] The record root element
     # @param name [String] The XML element name, without the namespace
     # @param tag  [String|Regexp] The value of the element's 'tag' attribute,
     #                             or a Regexp to match it
-    # @return     [Element] or [nil]
+    # @return     [Array] of Element
     def select_field(r, name, tag)
       if tag.class == Regexp
         select_cond = name_tag_match_condition(name, tag)
@@ -113,7 +113,7 @@ module MappingTools
     #
     # @param r   [Krikri::XmlParser::Value] The record root element
     # @param tag [String|Regexp] The tag, e.g. '240' or /^78[07]$/
-    # @return    [Element] or [nil], per #select_field
+    # @return    [Array] of Element, per .select_field
     def datafield_els(r, tag)
       select_field(r, 'datafield', tag)
     end
@@ -128,8 +128,6 @@ module MappingTools
     # @return     [Array] of String ([] if element does not exist)
     def datafield_values(r, tag)
       select_field(r, 'datafield', tag).map { |f| f.children.first.to_s }
-    rescue NoMethodError
-      []
     end
 
     ##
@@ -169,7 +167,7 @@ module MappingTools
     def subfield_values(elements, code)
       elements.map do |e|
         nodes = e.children.to_a.select(&subfield_code_condition(code))
-        !nodes.empty? ? nodes.first.children.to_s : nil
+        !nodes.empty? ? nodes.first.children.first.to_s : nil
       end.compact
     end
 
