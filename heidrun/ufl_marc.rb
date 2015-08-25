@@ -20,29 +20,29 @@ creator_select = lambda { |df|
 }
 
 genre_map = lambda { |r|
-  leader = MappingTools::MARC.leader_value(r)
-  cf_007 = MappingTools::MARC.controlfield_value(r, '007')
-  cf_008 = MappingTools::MARC.controlfield_value(r, '008')
-  MappingTools::MARC.genre leader: leader,
+  leader = Heidrun::MappingTools::MARC.leader_value(r)
+  cf_007 = Heidrun::MappingTools::MARC.controlfield_value(r, '007')
+  cf_008 = Heidrun::MappingTools::MARC.controlfield_value(r, '008')
+  Heidrun::MappingTools::MARC.genre leader: leader,
                            cf_007: cf_007,
                            cf_008: cf_008
 }
 
 dctype_map = lambda { |r|
-  leader = MappingTools::MARC.leader_value(r)
-  cf_007 = MappingTools::MARC.controlfield_value(r, '007')
-  df_337 = MappingTools::MARC.datafield_els(r, '337')
-  df_337a = MappingTools::MARC.subfield_values(df_337, 'a')
-  MappingTools::MARC.dctype leader: leader,
+  leader = Heidrun::MappingTools::MARC.leader_value(r)
+  cf_007 = Heidrun::MappingTools::MARC.controlfield_value(r, '007')
+  df_337 = Heidrun::MappingTools::MARC.datafield_els(r, '337')
+  df_337a = Heidrun::MappingTools::MARC.subfield_values(df_337, 'a')
+  Heidrun::MappingTools::MARC.dctype leader: leader,
                             cf_007: cf_007,
                             df_337a: df_337a
 }
 
 identifier_map = lambda { |r|
-  cf_001 = MappingTools::MARC.controlfield_value(r, '001')
-  df_35 = MappingTools::MARC.datafield_els(r, '035')
-  df_35a = MappingTools::MARC.subfield_values(df_35, 'a')
-  df_50 = MappingTools::MARC.datafield_els(r, '050')
+  cf_001 = Heidrun::MappingTools::MARC.controlfield_value(r, '001')
+  df_35 = Heidrun::MappingTools::MARC.datafield_els(r, '035')
+  df_35a = Heidrun::MappingTools::MARC.subfield_values(df_35, 'a')
+  df_50 = Heidrun::MappingTools::MARC.datafield_els(r, '050')
 
   df_50ab = df_50.map do |el|
     el.children
@@ -57,10 +57,10 @@ title_map = lambda { |r|
   nodes = []  # Elements
   # These appended elements will be nil if the datafields
   # do not exist.  The array will be compacted below.
-  nodes += MappingTools::MARC.datafield_els(r, '240')
-  nodes += MappingTools::MARC.datafield_els(r, '242')
+  nodes += Heidrun::MappingTools::MARC.datafield_els(r, '240')
+  nodes += Heidrun::MappingTools::MARC.datafield_els(r, '242')
 
-  df_245 = MappingTools::MARC.datafield_els(r, '245')
+  df_245 = Heidrun::MappingTools::MARC.datafield_els(r, '245')
 
   df_245.each do |el|
     if !el.children.empty?
@@ -80,36 +80,37 @@ language_map = lambda { |parser_value|
 }
 
 spatial_map = lambda { |r|
-  df_752 = MappingTools::MARC.datafield_els(r, '752')
-  df_752_val = MappingTools::MARC.all_subfield_values(df_752).join('--')
+  df_752 = Heidrun::MappingTools::MARC.datafield_els(r, '752')
+  df_752_val = Heidrun::MappingTools::MARC.all_subfield_values(df_752)
+                                          .join('--')
   return df_752_val if !df_752_val.empty?
 
-  df_650 = MappingTools::MARC.datafield_els(r, '650')
-  df_650z = MappingTools::MARC.subfield_values(df_650, 'z')
-  df_651 = MappingTools::MARC.datafield_els(r, '651')
-  df_651a = MappingTools::MARC.subfield_values(df_651, 'a')
-  df_662 = MappingTools::MARC.datafield_values(r, '662')
+  df_650 = Heidrun::MappingTools::MARC.datafield_els(r, '650')
+  df_650z = Heidrun::MappingTools::MARC.subfield_values(df_650, 'z')
+  df_651 = Heidrun::MappingTools::MARC.datafield_els(r, '651')
+  df_651a = Heidrun::MappingTools::MARC.subfield_values(df_651, 'a')
+  df_662 = Heidrun::MappingTools::MARC.datafield_values(r, '662')
   [df_650z, df_651a, df_662].flatten.reject { |e| e.empty? }
 }
 
 subject_tag_pat = /^6(?:00|1\d|5(?:[01]|[3-8])|9\d)$/
 subject_map = lambda { |r|
-  all_els = MappingTools::MARC.datafield_els(r, subject_tag_pat)
-  sfs = MappingTools::MARC.all_subfield_values(all_els)
+  all_els = Heidrun::MappingTools::MARC.datafield_els(r, subject_tag_pat)
+  sfs = Heidrun::MappingTools::MARC.all_subfield_values(all_els)
   sfs.reject { |e| e.empty? }
 }
 
 relation_map = lambda { |r|
-  dfs = MappingTools::MARC.datafield_els(r, /^78[07]$/)
-  MappingTools::MARC.subfield_values(dfs, 't')
+  dfs = Heidrun::MappingTools::MARC.datafield_els(r, /^78[07]$/)
+  Heidrun::MappingTools::MARC.subfield_values(dfs, 't')
 }
 
 dcformat_map = lambda { |r|
-  cf_007 = MappingTools::MARC.controlfield_value(r, '007')
-  leader = MappingTools::MARC.leader_value(r)
-  dfs = MappingTools::MARC.datafield_els(r, /^3(?:3[78]|40)$/)
-  a_vals = MappingTools::MARC.subfield_values(dfs, 'a')
-  formats = MappingTools::MARC.dcformat leader: leader,
+  cf_007 = Heidrun::MappingTools::MARC.controlfield_value(r, '007')
+  leader = Heidrun::MappingTools::MARC.leader_value(r)
+  dfs = Heidrun::MappingTools::MARC.datafield_els(r, /^3(?:3[78]|40)$/)
+  a_vals = Heidrun::MappingTools::MARC.subfield_values(dfs, 'a')
+  formats = Heidrun::MappingTools::MARC.dcformat leader: leader,
                                         cf_007: cf_007
   (formats + a_vals).uniq
 }
