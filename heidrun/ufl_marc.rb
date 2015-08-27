@@ -297,11 +297,7 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
 
     # title
     #   245 (all subfields except $c); 242; 240
-    title :class => DPLA::MAP::Concept,
-          :each => record.map(&title_map).flatten,
-          :as => :t do
-      providedLabel t
-    end
+    title record.map(&title_map).flatten
 
   end
 end
