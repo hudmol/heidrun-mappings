@@ -65,7 +65,8 @@ title_map = lambda { |r|
   df_245.each do |el|
     if !el.children.empty?
       nodes += el.children
-                 .select { |c| c.name == 'subfield' && c[:code] != 'c' }
+                 .select { |c| c.name == 'subfield' \
+                               && !%w(c h).include?(c[:code]) }
     end
   end
 
@@ -296,7 +297,7 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
     end
 
     # title
-    #   245 (all subfields except $c); 242; 240
+    #   245 (all subfields except $c and $h); 242; 240
     title record.map(&title_map).flatten
 
   end
