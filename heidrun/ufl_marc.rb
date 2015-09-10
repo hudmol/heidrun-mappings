@@ -302,5 +302,13 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
     #   245 (all subfields except $c and $h); 242; 240
     title record.map(&title_map).flatten
 
+    # temporal
+    #  648
+    temporal :class => DPLA::MAP::TimeSpan,
+             :each => record.field('marc:datafield')
+                            .match_attribute(:tag, '648'),
+             :as => :t do
+      providedLabel t
+    end
   end
 end
