@@ -13,8 +13,8 @@ contributor_select = lambda { |df|
 }
 
 creator_select = lambda { |df|
-  ['100', '110', '111', '700'].include?(df.tag) &&
-    ['joint author.', 'jt author'].include?(subfield_e(df))
+  ['100', '110', '111'].include?(df.tag) ||
+    (df.tag == '700' && ['joint author', 'jt author'].include?(subfield_e(df)))
 }
 
 genre_map = lambda { |r|
@@ -178,13 +178,14 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
     end
 
     # creator:
-    #   100, 110, 111, 700 when the relator term (subfield e) is
-    #   'joint author.' or 'jt author'
+    #   Take the value of $a for 100, 110, 111 and the value of $a for 700 if
+    #   the value of $e is "joint author" or "jt author" ... so $a only is
+    #   actually mapped.
     creator :class => DPLA::MAP::Agent,
             :each => record.field('marc:datafield')
                            .select(&creator_select),
             :as => :cre do
-      providedLabel cre.field('marc:subfield')
+      providedLabel cre.field('marc:subfield').match_attribute(:code, 'a')
     end
 
     date :class => DPLA::MAP::TimeSpan,
