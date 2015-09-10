@@ -8,10 +8,8 @@ def subfield_e(df)
 end
 
 contributor_select = lambda { |df|
-  (df.tag == '700' &&
-    !['joint author', 'jt author'].include?(subfield_e(df))) ||
-  (['710', '711', '720'].include?(df.tag) &&
-    !['aut', 'cre'].include?(subfield_e(df)))
+  ['700', '710', '711', '720'].include?(df.tag) &&
+    !['joint author', 'jt author'].include?(subfield_e(df))
 }
 
 creator_select = lambda { |df|
@@ -170,13 +168,13 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
     end
 
     # contributor:
-    #   700 when the subfield e is not 'joint author' or 'jt author';
-    #   710; 711; 720 when the relator term (subfield e) is not 'aut' or 'cre'
+    #   700$a, 710$a, 711$a, or 720$a when there is not a $e that says
+    #   "joint author" or "jt author" – i.e. sometimes there will only be $a
     contributor :class => DPLA::MAP::Agent,
                 :each => record.field('marc:datafield')
                                .select(&contributor_select),
                 :as => :contrib do
-      providedLabel contrib.field('marc:subfield')
+      providedLabel contrib.field('marc:subfield').match_attribute(:code, 'a')
     end
 
     # creator:
