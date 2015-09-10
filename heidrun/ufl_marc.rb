@@ -196,9 +196,9 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
     end
 
     # description
-    #   5XX; not 538, 535, 533, 510
+    #   5XX; not 538, 535, 536, 533, 510
     description record.field('marc:datafield')
-                      .select { |df| df.tag[/^5(?!10|33|35|38)[0-9]{2}/] }
+                      .select { |df| df.tag[/^5(?!10|33|35|36|38)[0-9]{2}/] }
                       .field('marc:subfield')
 
     extent record.field('marc:datafield')
