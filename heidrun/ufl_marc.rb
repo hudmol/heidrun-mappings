@@ -114,6 +114,14 @@ dcformat_map = lambda { |r|
   (formats + a_vals).uniq
 }
 
+extent_map = lambda { |r|
+  df_300 = Heidrun::MappingTools::MARC.datafield_els(r, '300')
+  df_340 = Heidrun::MappingTools::MARC.datafield_els(r, '340')
+  df_300a = Heidrun::MappingTools::MARC.subfield_values(df_300, 'a')
+  df_300c = Heidrun::MappingTools::MARC.subfield_values(df_300, 'c')
+  df_340b = Heidrun::MappingTools::MARC.subfield_values(df_340, 'b')
+  [df_300a, df_300c, df_340b].flatten.reject { |e| e.empty? }
+}
 
 Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
   provider :class => DPLA::MAP::Agent do
@@ -201,14 +209,9 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
                       .select { |df| df.tag[/^5(?!10|33|35|36|38)[0-9]{2}/] }
                       .field('marc:subfield')
 
-    extent record.field('marc:datafield')
-            .match_attribute(:tag) { |tag| tag == '300' || tag == '340' }
-            .select { |df| (df.tag == '300' && 
-                           (!df['marc:subfield'].match_attribute(:code, 'a').empty? || 
-                            !df['marc:subfield'].match_attribute(:code, 'c').empty?)) ||
-                      (df.tag == '340' && 
-                       !df['marc:subfield'].match_attribute(:code, 'b').empty?) }
-            .field('marc:subfield')
+    # extent
+    #   300a; 300c; 340b
+    extent record.map(&extent_map).flatten
 
     # genre
     #   See chart here [minus step two]:
