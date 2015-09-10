@@ -216,39 +216,23 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
     # genre
     #   See chart here [minus step two]:
     #   https://docs.google.com/spreadsheet/ccc?key=0ApDps8nOS9g5dHBOS0ZLRVJyZ1ZsR3RNZDhXTGV4SVE#gid=0
-    genre  :class => DPLA::MAP::Concept,
-           :each => record.map(&genre_map).flatten,
-           :as => :g do
-      prefLabel g
-    end
+    genre record.map(&genre_map).flatten
 
     # dctype
     #   337$a
     #   See spreadsheet referenced above for genre.
-    dctype :class => DPLA::MAP::Concept,
-           :each => record.map(&dctype_map).flatten,
-           :as => :dct do
-      prefLabel dct
-    end
+    dctype record.map(&dctype_map).flatten
 
     # dcformat
     #   007 position 00 [see http://www.loc.gov/marc/bibliographic/bd007.html];
     #   position 06 in Leader [see “06 - Type of record“ here: http://www.loc.gov/marc/bibliographic/bdleader.html];
     #   337$a; 338$a; 340$a
-    dcformat :class => DPLA::MAP::Concept,
-             :each => record.map(&dcformat_map).flatten,
-             :as => :dcf do
-      prefLabel dcf
-    end
+    dcformat record.map(&dcformat_map).flatten
 
     # identifier
     #   001; 035$a;
     #   050$a$b (join strings with a space character)
-    identifier :class => DPLA::MAP::Concept,
-               :each => record.map(&identifier_map).flatten,
-               :as => :id do
-      providedLabel id
-    end
+    identifier record.map(&identifier_map).flatten
 
     # language
     #   008 (positions 35-37)
@@ -280,11 +264,7 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
 
     # relation
     #   both 780$t and 787$t
-    relation :class => DPLA::MAP::Concept,
-             :each => record.map(&relation_map).flatten,
-             :as => :r do
-      providedLabel r
-    end
+    relation record.map(&relation_map).flatten
 
     rights record.field('marc:datafield').match_attribute(:tag, '506')
                    .field('marc:subfield').match_attribute(:code, 'a')
