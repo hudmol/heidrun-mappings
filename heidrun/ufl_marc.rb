@@ -21,8 +21,8 @@ creator_select = lambda { |df|
 
 genre_map = lambda { |r|
   leader = Heidrun::MappingTools::MARC.leader_value(r)
-  cf_007 = Heidrun::MappingTools::MARC.controlfield_value(r, '007')
-  cf_008 = Heidrun::MappingTools::MARC.controlfield_value(r, '008')
+  cf_007 = Heidrun::MappingTools::MARC.controlfield_values(r, '007')
+  cf_008 = Heidrun::MappingTools::MARC.controlfield_values(r, '008')
   Heidrun::MappingTools::MARC.genre leader: leader,
                            cf_007: cf_007,
                            cf_008: cf_008
@@ -30,7 +30,7 @@ genre_map = lambda { |r|
 
 dctype_map = lambda { |r|
   leader = Heidrun::MappingTools::MARC.leader_value(r)
-  cf_007 = Heidrun::MappingTools::MARC.controlfield_value(r, '007')
+  cf_007 = Heidrun::MappingTools::MARC.controlfield_values(r, '007')
   df_337 = Heidrun::MappingTools::MARC.datafield_els(r, '337')
   df_337a = Heidrun::MappingTools::MARC.subfield_values(df_337, 'a')
   Heidrun::MappingTools::MARC.dctype leader: leader,
@@ -39,7 +39,7 @@ dctype_map = lambda { |r|
 }
 
 identifier_map = lambda { |r|
-  cf_001 = Heidrun::MappingTools::MARC.controlfield_value(r, '001')
+  cf_001 = Heidrun::MappingTools::MARC.controlfield_values(r, '001')
   df_35 = Heidrun::MappingTools::MARC.datafield_els(r, '035')
   df_35a = Heidrun::MappingTools::MARC.subfield_values(df_35, 'a')
   df_50 = Heidrun::MappingTools::MARC.datafield_els(r, '050')
@@ -107,7 +107,7 @@ relation_map = lambda { |r|
 }
 
 dcformat_map = lambda { |r|
-  cf_007 = Heidrun::MappingTools::MARC.controlfield_value(r, '007')
+  cf_007 = Heidrun::MappingTools::MARC.controlfield_values(r, '007')
   leader = Heidrun::MappingTools::MARC.leader_value(r)
   dfs = Heidrun::MappingTools::MARC.datafield_els(r, /^3(?:3[78]|40)$/)
   a_vals = Heidrun::MappingTools::MARC.subfield_values(dfs, 'a')
