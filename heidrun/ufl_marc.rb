@@ -89,7 +89,8 @@ spatial_map = lambda { |r|
   df_651 = Heidrun::MappingTools::MARC.datafield_els(r, '651')
   df_651a = Heidrun::MappingTools::MARC.subfield_values(df_651, 'a')
   df_662 = Heidrun::MappingTools::MARC.datafield_values(r, '662')
-  [df_650z, df_651a, df_662].flatten.reject { |e| e.empty? }
+  df_662_subs = Heidrun::MappingTools::MARC.all_subfield_values(df_662)
+  [df_650z, df_651a, df_662_subs].flatten.reject { |e| e.empty? }
 }
 
 subject_tag_pat = /^6(?:00|1\d|5(?:[01]|[3-8])|9\d)$/
@@ -246,7 +247,7 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
 
     # spatial
     #   752 (separate subfields with double hyphen);
-    #   else any of these: (650$z; 651$a; 662)
+    #   else any of these: (650$z; 651$a; 662$[all subfields])
     #   [see defs of subfield codes at http://www.loc.gov/marc/bibliographic/bd662.html]
     spatial :class => DPLA::MAP::Place,
             :each => record.map(&spatial_map).flatten,
