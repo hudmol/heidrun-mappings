@@ -74,8 +74,14 @@ title_map = lambda { |r|
   nodes.compact.map { |n| n.children.first.to_s }
 }
 
-language_map = lambda { |parser_value|
-  parser_value.node.children.first.to_s[35,3]
+language_map = lambda { |r|
+  df_041 = Heidrun::MappingTools::MARC.datafield_els(r, '041')
+  df_041a = Heidrun::MappingTools::MARC.subfield_values(df_041, 'a')
+
+  return df_041a if !df_041a.empty?
+
+  cf_008 = Heidrun::MappingTools::MARC.controlfield_values(r, '008')
+  cf_008.map { |cf| cf[35,3] }.reject { |s| s.empty? }
 }
 
 spatial_map = lambda { |r|
@@ -240,11 +246,9 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
     identifier record.map(&identifier_map).flatten
 
     # language
-    #   008 (positions 35-37)
+    #   041$a, or, failing that, 008 (positions 35-37)
     language :class => DPLA::MAP::Controlled::Language,
-             :each => record.field('marc:controlfield')
-                            .match_attribute(:tag, '008')
-                            .map(&language_map),
+             :each => record.map(&language_map).flatten,
              :as => :lang do
       prefLabel lang
     end
