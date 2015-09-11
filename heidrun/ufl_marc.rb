@@ -255,12 +255,15 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
       providedLabel place
     end
 
-
+    # publisher
+    #   260$b  (http://www.loc.gov/marc/bibliographic/bd260.html)
     publisher :class => DPLA::MAP::Agent, 
               :each => record.field('marc:datafield')
-                             .match_attribute(:tag, '260'),
+                             .match_attribute(:tag, '260')
+                             .field('marc:subfield')
+                             .match_attribute(:code, 'b'),
               :as => :pub do
-      providedLabel pub.field('marc:subfield').match_attribute(:code, 'b')
+      providedLabel pub
     end
 
     # relation
