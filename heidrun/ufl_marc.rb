@@ -95,9 +95,13 @@ spatial_map = lambda { |r|
 
 subject_tag_pat = /^6(?:00|1\d|5(?:[01]|[3-8])|9\d)$/
 subject_map = lambda { |r|
-  all_els = Heidrun::MappingTools::MARC.datafield_els(r, subject_tag_pat)
-  sfs = Heidrun::MappingTools::MARC.all_subfield_values(all_els)
-  sfs.reject { |e| e.empty? }
+  all_dfs = Heidrun::MappingTools::MARC.datafield_els(r, subject_tag_pat)
+  subjects = []
+  all_dfs.each do |df|
+    sfs = Heidrun::MappingTools::MARC.all_subfield_values([df])
+    subjects << sfs.map { |f| f.strip }.join('--')
+  end
+  subjects.reject { |s| s.empty? }
 }
 
 relation_map = lambda { |r|
@@ -275,7 +279,8 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
 
     # subject
     #   600; 61X; 650; 651; 653; 654; 655; 656; 657; 658; 69X
-    #   "all subfields"
+    #   (concatenate all alphabetic subfields within each datafield with double
+    #   hyphens)
     subject :class => DPLA::MAP::Concept,
             :each => record.map(&subject_map).flatten,
             :as => :s do
