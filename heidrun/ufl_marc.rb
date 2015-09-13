@@ -1,8 +1,4 @@
 
-def caribbean?(parser_value)
-  parser_value.value.include?('Digital Library of the Caribbean')
-end
-
 def subfield_e(df)
   df['marc:subfield'].match_attribute(:code, 'e')
 end
@@ -133,6 +129,21 @@ extent_map = lambda { |r|
   [df_300a, df_300c, df_340b].flatten.reject { |e| e.empty? }
 }
 
+int_provider_map = lambda { |r|
+  df_830 = Heidrun::MappingTools::MARC.datafield_els(r, '830')
+  df_830a = Heidrun::MappingTools::MARC.subfield_values(df_830, 'a')
+  df_997 = Heidrun::MappingTools::MARC.datafield_els(r, '997')
+  df_997a = Heidrun::MappingTools::MARC.subfield_values(df_997, 'a')
+
+  [df_830a, df_997a].each do |df|
+    if df.include?('Digital Library of the Caribbean')
+      return ['Digital Library of the Caribbean']
+    end
+  end
+  []
+}
+
+
 Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
   provider :class => DPLA::MAP::Agent do
     uri 'http://dp.la/api/contributor/ufl'
@@ -146,16 +157,15 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
     providedLabel dataP.field('marc:subfield').match_attribute(:code, 'a')
   end
 
+  # intermediateProvider
+  #   "Digital Library of the Caribbean" if either 830$a or 997$a match that
+  #   string.
   intermediateProvider :class => DPLA::MAP::Agent,
-                       :each => record.field('marc:datafield')
-                                      .match_attribute(:tag, '830')
-                                      .field('marc:subfield')
-                                      .match_attribute(:code, 'a')
-                                      .select { |a| caribbean?(a) },
+                       :each => record.map(&int_provider_map).flatten,
                        :as => :ip do
     providedLabel ip
   end
-  
+
   isShownAt :class => DPLA::MAP::WebResource,
             :each => record.field('marc:datafield')
                            .match_attribute(:tag, '856'),
