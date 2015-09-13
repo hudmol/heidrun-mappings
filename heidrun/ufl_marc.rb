@@ -175,11 +175,14 @@ Krikri::Mapper.define(:ufl_marc, :parser => Krikri::MARCXMLParser) do
 
   preview :class => DPLA::MAP::WebResource,
           :each => record.field('marc:datafield')
-                         .match_attribute(:tag, '992'),
+                         .match_attribute(:tag, '992')
+                         .field('marc:subfield')
+                         .match_attribute(:code, 'a'),
           :as => :thumb do
-    # FIXME:  ensure properly urlencoded.  There are URIs with space
-    # characters that produce errors.
-    uri thumb.field('marc:subfield').match_attribute(:code, 'a')
+    # There are URIs with space characters that produce errors without the
+    # following substitution.  I'm restricting my processing to this because
+    # anything else is beyond the scope of a mapping; this may be already. -MB
+    uri thumb.map { |t| t.value.gsub(/ /) { '%20' } }
   end
 
   originalRecord :class => DPLA::MAP::WebResource do
