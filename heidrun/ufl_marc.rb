@@ -77,7 +77,7 @@ language_map = lambda { |r|
   return df_041a if !df_041a.empty?
 
   cf_008 = Heidrun::MappingTools::MARC.controlfield_values(r, '008')
-  cf_008.map { |cf| cf[35,3] }.reject { |s| s.empty? }
+  cf_008.map { |cf| cf[35,3] }.reject { |s| s.nil? || s.empty? }
 }
 
 spatial_map = lambda { |r|
